@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: "Confluent MCP Proxy"
+  main:
+    banner-mode: off
+    web-application-type: none
+mcp:
+  server:
+    name: "Confluent MCP Proxy"
+    version: 1.0.0
+kafka:
+  broker:
+    url: pkc-419q3.us-east4.gcp.confluent.cloud:9092
+    security_protocol: SASL_SSL
+    sasl_mechanism: PLAIN
+    jaas_config: org.apache.kafka.common.security.plain.PlainLoginModule required username="R7F5DDLXMUGGQ4MP" password="OsM9Bab1xK0Og05IZLJzCbRDeOQtfbuVJnWIqmAseuXJPZtd/svlE1P+28ZWG/VG";
+  schema-registry:
+    url: https://psrc-yg906.us-east-2.aws.confluent.cloud
+    auth_info: YWDZBN2ZYK3Y2Y2S:f9QyCN0gxch7GsrMRwwi65jXQ41cJ/bw4uAggRdfvwE4GnPcqXbJLZiMBG1VGjMI
+registration:
+  topic: "_agent_registry"
+transport:
+  mode: "stdio"
+logging:
+  file:
+    name: "/Users/pascal/projects/demos/ai/mcp/proxy/logs/mcp-proxy.log"
+  pattern:
+    console: ""
