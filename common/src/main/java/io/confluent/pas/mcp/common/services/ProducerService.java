@@ -40,7 +40,6 @@ public class ProducerService<K, V> {
                             sink.success();
                         }
                     });
-            producer.get().flush();
         });
     }
 
