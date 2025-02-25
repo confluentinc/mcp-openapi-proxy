@@ -10,6 +10,8 @@ processes incoming text data, analyzes sentiment, and outputs the results for do
 Proxy** is used to expose the Flink agent as an **MCP/OpenAPI service**, allowing seamless interaction with MCP/OpenAPI
 clients.
 
+![MCP/OpenAPI Proxy Demo](./Demo.gif)
+
 ## Architecture
 
 ```
@@ -113,7 +115,7 @@ Run a **LATERAL TABLE** join to analyze incoming text and store results.
 INSERT INTO `user_sentiment`
 SELECT `correlationId`, sentiment
 FROM `user_message`,
-     LATERAL TABLE (ML_PREDICT('sentimentmodel', query));
+     LATERAL TABLE (ML_PREDICT('sentimentmodel', message));
 ```
 
 ### Step 5: Expose the Flink Agent via MCP/OpenAPI Proxy
