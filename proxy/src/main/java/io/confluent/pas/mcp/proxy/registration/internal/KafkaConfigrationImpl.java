@@ -32,6 +32,11 @@ public class KafkaConfigrationImpl implements KafkaConfigration {
     private Broker broker;
     private SR schemaRegistry;
 
+    @Bean
+    public SR getSchemaRegistryConfiguration() {
+        return schemaRegistry;
+    }
+
     /**
      * Get properties for Kafka producer
      *

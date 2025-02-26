@@ -26,6 +26,9 @@ registration:
   topic: "_agent_registry"
 transport:
   mode: "sse"
+authentication:
+  cache-size: 100
+  cache-expiry-in-second: 300
 ---
 spring:
   config:

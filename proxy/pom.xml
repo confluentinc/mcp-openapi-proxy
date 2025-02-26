@@ -38,6 +38,7 @@
         <confluent.version>7.7.1</confluent.version>
         <kafka.version>3.9.0</kafka.version>
         <kcache.version>5.1.0</kcache.version>
+        <caffeine.version>3.2.0</caffeine.version>
     </properties>
 
     <dependencyManagement>
@@ -53,6 +54,12 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>${caffeine.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>io.kcache</groupId>
             <artifactId>kcache</artifactId>
@@ -111,6 +118,10 @@
             <artifactId>common</artifactId>
             <version>0.0.1-SNAPSHOT</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
     </dependencies>
 

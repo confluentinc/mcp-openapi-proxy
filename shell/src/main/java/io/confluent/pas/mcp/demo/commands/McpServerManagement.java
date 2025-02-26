@@ -36,14 +36,14 @@ public class McpServerManagement {
      * @param args    The command line arguments.
      */
     @Command(command = "add stdio", description = "Add an STDIO MCP Server")
-    public void addStdioMcpServer(@Option(required = true,
-                                          longNames = "command",
-                                          shortNames = 'c',
-                                          description = "Command to run") String command,
-                                  @Option(arity = CommandRegistration.OptionArity.ONE_OR_MORE,
-                                          longNames = "args",
-                                          shortNames = 'a',
-                                          description = "Command line arguments") String[] args) {
+    public void addSseMcpServer(@Option(required = true,
+                                        longNames = "command",
+                                        shortNames = 'c',
+                                        description = "Command to run") String command,
+                                @Option(arity = CommandRegistration.OptionArity.ONE_OR_MORE,
+                                        longNames = "args",
+                                        shortNames = 'a',
+                                        description = "Command line arguments") String[] args) {
         addServer(new McpStdioConnection(command, List.of(args)));
     }
 
@@ -53,11 +53,20 @@ public class McpServerManagement {
      * @param url The URL of the server.
      */
     @Command(command = "add sse", description = "Add an SSE MCP Server")
-    public void addStdioMcpServer(@Option(required = true,
-            longNames = "url",
-            shortNames = 'u',
-            description = "MCP Server URL") String url) {
-        addServer(new McpSseConnection(url));
+    public void addSseMcpServer(
+            @Option(required = true,
+                    longNames = "url",
+                    shortNames = 'u',
+                    description = "MCP Server URL") String url,
+            @Option(required = true,
+                    longNames = "username",
+                    shortNames = 'n',
+                    description = "Username") String username,
+            @Option(required = true,
+                    longNames = "password",
+                    shortNames = 'p',
+                    description = "Password") String password) {
+        addServer(new McpSseConnection(url, username, password));
     }
 
     /**

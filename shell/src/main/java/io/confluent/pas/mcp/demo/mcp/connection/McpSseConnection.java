@@ -4,6 +4,7 @@ import io.modelcontextprotocol.client.transport.WebFluxSseClientTransport;
 import io.modelcontextprotocol.spec.ClientMcpTransport;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunctions;
 import org.springframework.web.reactive.function.client.WebClient;
 
 
@@ -14,12 +15,16 @@ import org.springframework.web.reactive.function.client.WebClient;
 @AllArgsConstructor
 public class McpSseConnection extends McpAbstractConnection {
 
-    private String url;
+    private final String url;
+    private final String username;
+    private final String password;
 
     @Override
     protected ClientMcpTransport getTransport() {
         WebClient.Builder webClientBuilder = WebClient
                 .builder()
+                .filter(ExchangeFilterFunctions
+                        .basicAuthentication(username, password))
                 .baseUrl(url);
 
         return new WebFluxSseClientTransport(webClientBuilder);
