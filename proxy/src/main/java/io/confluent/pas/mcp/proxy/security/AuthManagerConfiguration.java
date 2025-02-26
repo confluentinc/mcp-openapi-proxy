@@ -3,6 +3,7 @@ package io.confluent.pas.mcp.proxy.security;
 import io.confluent.pas.mcp.common.services.KafkaConfigration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -34,6 +35,7 @@ public class AuthManagerConfiguration {
      * @return the configured SecurityWebFilterChain
      */
     @Bean
+    @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "sse")
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
                                                             KafkaConfigration.SR schemaRegistryConfig) {
         http.authorizeExchange((exchanges) -> exchanges.anyExchange().authenticated())
