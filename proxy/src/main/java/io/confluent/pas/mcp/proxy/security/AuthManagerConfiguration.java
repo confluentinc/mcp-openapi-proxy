@@ -19,8 +19,6 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @EnableWebFluxSecurity
 public class AuthManagerConfiguration {
 
-    private KafkaConfigration.SR schemaRegistry;
-
     @Value("${authentication.cache-size}")
     private int cacheSize = 100;
     @Value("${authentication.cache-expiry-in-second}")
@@ -45,7 +43,9 @@ public class AuthManagerConfiguration {
                 })
                 .formLogin((httpBasicSpec) -> {
                     httpBasicSpec.authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry));
-                });
+                })
+                .anonymous(ServerHttpSecurity.AnonymousSpec::disable)
+                .authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry));
 
         return http.build();
     }

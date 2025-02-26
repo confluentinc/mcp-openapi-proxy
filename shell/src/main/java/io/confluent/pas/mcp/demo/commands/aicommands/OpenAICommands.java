@@ -3,6 +3,7 @@ package io.confluent.pas.mcp.demo.commands.aicommands;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import io.confluent.pas.mcp.demo.commands.McpConnections;
+import io.confluent.pas.mcp.demo.utils.ValueUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
@@ -38,7 +39,7 @@ public class OpenAICommands extends AbstractLLMCommands {
                                   @Option(longNames = "prompt",
                                           shortNames = 'p',
                                           description = "System prompt") String systemPrompt) {
-        final String envApiKey = resolveValueOrEnv(apiKey, envKeyName);
+        final String envApiKey = ValueUtils.resolveValueOrEnv(apiKey, envKeyName);
         if (StringUtils.isEmpty(envApiKey)) {
             terminal.writer().println("API key is required");
             terminal.writer().flush();
