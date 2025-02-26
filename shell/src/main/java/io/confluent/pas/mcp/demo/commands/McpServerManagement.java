@@ -36,14 +36,14 @@ public class McpServerManagement {
      * @param args    The command line arguments.
      */
     @Command(command = "add stdio", description = "Add an STDIO MCP Server")
-    public void addSseMcpServer(@Option(required = true,
-                                        longNames = "command",
-                                        shortNames = 'c',
-                                        description = "Command to run") String command,
-                                @Option(arity = CommandRegistration.OptionArity.ONE_OR_MORE,
-                                        longNames = "args",
-                                        shortNames = 'a',
-                                        description = "Command line arguments") String[] args) {
+    public void addStdioMcpServer(@Option(required = true,
+                                          longNames = "command",
+                                          shortNames = 'c',
+                                          description = "Command to run") String command,
+                                  @Option(arity = CommandRegistration.OptionArity.ONE_OR_MORE,
+                                          longNames = "args",
+                                          shortNames = 'a',
+                                          description = "Command line arguments") String[] args) {
         addServer(new McpStdioConnection(command, List.of(args)));
     }
 
