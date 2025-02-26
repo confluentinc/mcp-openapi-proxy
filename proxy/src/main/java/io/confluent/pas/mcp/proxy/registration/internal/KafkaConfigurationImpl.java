@@ -27,10 +27,15 @@ import java.util.Properties;
 @Setter
 @Component
 @ConfigurationProperties("kafka")
-public class KafkaConfigrationImpl implements KafkaConfigration {
+public class KafkaConfigurationImpl implements KafkaConfigration {
 
     private Broker broker;
     private SR schemaRegistry;
+
+    @Bean
+    public SR getSchemaRegistryConfiguration() {
+        return schemaRegistry;
+    }
 
     /**
      * Get properties for Kafka producer

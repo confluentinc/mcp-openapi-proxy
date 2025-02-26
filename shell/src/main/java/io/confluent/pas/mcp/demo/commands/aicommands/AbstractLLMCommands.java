@@ -26,18 +26,7 @@ public abstract class AbstractLLMCommands {
         this.lineReader = lineReader;
         this.connections = connections;
     }
-
-    /**
-     * Resolve the value of a parameter or environment variable
-     *
-     * @param value      The value of the parameter
-     * @param envKeyName The name of the environment variable
-     * @return The resolved value of the parameter or environment variable
-     */
-    protected String resolveValueOrEnv(String value, String envKeyName) {
-        return StringUtils.isEmpty(value) ? System.getenv(envKeyName) : value;
-    }
-
+    
     /**
      * Start a conversation with an AI
      *

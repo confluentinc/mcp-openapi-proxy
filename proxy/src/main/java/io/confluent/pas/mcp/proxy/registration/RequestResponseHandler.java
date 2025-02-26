@@ -3,7 +3,7 @@ package io.confluent.pas.mcp.proxy.registration;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.pas.mcp.common.services.ProducerService;
 import io.confluent.pas.mcp.common.utils.Lazy;
-import io.confluent.pas.mcp.proxy.registration.internal.KafkaConfigrationImpl;
+import io.confluent.pas.mcp.proxy.registration.internal.KafkaConfigurationImpl;
 import io.confluent.pas.mcp.proxy.registration.internal.KafkaResponseHandler;
 import io.confluent.pas.mcp.proxy.registration.models.Registration;
 import jakarta.annotation.PreDestroy;
@@ -24,12 +24,12 @@ import java.util.concurrent.ExecutionException;
 @Component
 public class RequestResponseHandler {
 
-    private final KafkaConfigrationImpl kafkaConfigration;
+    private final KafkaConfigurationImpl kafkaConfigration;
     private final ProducerService<JsonNode, JsonNode> producerService;
     private final Lazy<KafkaProducer<JsonNode, JsonNode>> producer = new Lazy<>(this::createNewProducer);
     private final KafkaResponseHandler kafkaResponseHandler;
 
-    public RequestResponseHandler(@Autowired KafkaConfigrationImpl kafkaConfigration) {
+    public RequestResponseHandler(@Autowired KafkaConfigurationImpl kafkaConfigration) {
         this.kafkaConfigration = kafkaConfigration;
         this.kafkaResponseHandler = new KafkaResponseHandler("mcp-proxy-response", kafkaConfigration);
         this.producerService = new ProducerService<>("mcp-proxy-request", kafkaConfigration);

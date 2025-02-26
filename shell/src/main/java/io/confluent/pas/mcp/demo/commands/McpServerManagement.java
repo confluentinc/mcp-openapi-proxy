@@ -3,6 +3,7 @@ package io.confluent.pas.mcp.demo.commands;
 import io.confluent.pas.mcp.demo.mcp.McpServerConnection;
 import io.confluent.pas.mcp.demo.mcp.connection.McpSseConnection;
 import io.confluent.pas.mcp.demo.mcp.connection.McpStdioConnection;
+import io.confluent.pas.mcp.demo.utils.ValueUtils;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.jline.terminal.Terminal;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,11 +54,38 @@ public class McpServerManagement {
      * @param url The URL of the server.
      */
     @Command(command = "add sse", description = "Add an SSE MCP Server")
-    public void addStdioMcpServer(@Option(required = true,
-            longNames = "url",
-            shortNames = 'u',
-            description = "MCP Server URL") String url) {
-        addServer(new McpSseConnection(url));
+    public void addSseMcpServer(
+            @Option(required = true,
+                    longNames = "url",
+                    shortNames = 'u',
+                    description = "MCP Server URL") String url,
+            @Option(longNames = "username",
+                    shortNames = 'n',
+                    description = "Username") String username,
+            @Option(longNames = "password",
+                    shortNames = 'p',
+                    description = "Password") String password,
+            @Option(longNames = "username_key",
+                    defaultValue = "MCP_USERNAME",
+                    description = "Username environment variable key name") String usernameKey,
+            @Option(longNames = "password_key",
+                    defaultValue = "MCP_PASSWORD",
+                    description = "Password environment variable key name") String passwordKey) {
+        final String resolvedUsername = ValueUtils.resolveValueOrEnv(username, usernameKey);
+        if (resolvedUsername == null) {
+            terminal.writer().println("Username is required");
+            terminal.writer().flush();
+            return;
+        }
+
+        final String resolvedPassword = ValueUtils.resolveValueOrEnv(password, passwordKey);
+        if (resolvedPassword == null) {
+            terminal.writer().println("Password is required");
+            terminal.writer().flush();
+            return;
+        }
+
+        addServer(new McpSseConnection(url, resolvedUsername, resolvedPassword));
     }
 
     /**

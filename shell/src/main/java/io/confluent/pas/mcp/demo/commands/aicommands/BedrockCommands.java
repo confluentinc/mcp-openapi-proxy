@@ -4,6 +4,7 @@ package io.confluent.pas.mcp.demo.commands.aicommands;
 import dev.langchain4j.model.bedrock.BedrockChatModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import io.confluent.pas.mcp.demo.commands.McpConnections;
+import io.confluent.pas.mcp.demo.utils.ValueUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
@@ -59,9 +60,9 @@ public class BedrockCommands extends AbstractLLMCommands {
                                   @Option(longNames = "prompt",
                                           shortNames = 'p',
                                           description = "System prompt") String systemPrompt) {
-        final String apiKeyValue = resolveValueOrEnv(accessKey, envAccessKeyName);
-        final String apiSecretValue = resolveValueOrEnv(secretAccessKey, envSecretName);
-        final String token = resolveValueOrEnv(sessionToken, envSessionToken);
+        final String apiKeyValue = ValueUtils.resolveValueOrEnv(accessKey, envAccessKeyName);
+        final String apiSecretValue = ValueUtils.resolveValueOrEnv(secretAccessKey, envSecretName);
+        final String token = ValueUtils.resolveValueOrEnv(sessionToken, envSessionToken);
         if (StringUtils.isEmpty(apiKeyValue) ||
                 StringUtils.isEmpty(apiSecretValue) ||
                 StringUtils.isEmpty(token)) {
