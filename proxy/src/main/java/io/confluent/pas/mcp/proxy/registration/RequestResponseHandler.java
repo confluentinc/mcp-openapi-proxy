@@ -2,11 +2,10 @@ package io.confluent.pas.mcp.proxy.registration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.pas.mcp.common.services.ProducerService;
-import io.confluent.pas.mcp.common.utils.Lazy;
+import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.internal.KafkaConfigurationImpl;
 import io.confluent.pas.mcp.proxy.registration.internal.KafkaResponseHandler;
-import io.confluent.pas.mcp.proxy.registration.models.Registration;
-import jakarta.annotation.PreDestroy;
+import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +25,6 @@ public class RequestResponseHandler {
 
     private final KafkaConfigurationImpl kafkaConfigration;
     private final ProducerService<JsonNode, JsonNode> producerService;
-    private final Lazy<KafkaProducer<JsonNode, JsonNode>> producer = new Lazy<>(this::createNewProducer);
     private final KafkaResponseHandler kafkaResponseHandler;
 
     public RequestResponseHandler(@Autowired KafkaConfigurationImpl kafkaConfigration) {
@@ -39,13 +37,15 @@ public class RequestResponseHandler {
      * Send a request to a topic and wait for a response
      *
      * @param registration  the registration
+     * @param schemas       the schemas
      * @param correlationId the correlation id
      * @param request       the request
      * @return the response
      * @throws ExecutionException   if the request fails
      * @throws InterruptedException if the request is interrupted
      */
-    public Mono<Map<String, Object>> sendRequestResponse(Registration registration,
+    public Mono<Map<String, Object>> sendRequestResponse(Schemas.Registration registration,
+                                                         RegistrationSchemas schemas,
                                                          String correlationId,
                                                          Map<String, Object> request)
             throws ExecutionException, InterruptedException {
@@ -59,26 +59,13 @@ public class RequestResponseHandler {
 
         // Send the request
         return producerService.send(registration.getRequestTopicName(),
-                        registration.getRequestKeySchema().envelope(key),
-                        registration.getRequestSchema().envelope(request))
+                        schemas.getRequestKeySchema().envelope(key),
+                        schemas.getRequestSchema().envelope(request))
                 .doOnError(sink::tryEmitError)
                 .doOnSuccess(metadata -> log.info("Sent request to topic: {}", registration.getRequestTopicName()))
                 .then(sink.asMono());
     }
 
-    /**
-     * Stop the producer
-     */
-    @PreDestroy
-    public void stop() {
-        log.info("Stopping request handler");
-
-        if (producer.isInitialized()) {
-            producer.get().close();
-        }
-
-        log.info("Request handler stopped");
-    }
 
     /**
      * Create a new producer

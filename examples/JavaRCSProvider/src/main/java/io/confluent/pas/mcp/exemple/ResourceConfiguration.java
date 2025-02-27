@@ -18,12 +18,12 @@ import org.springframework.stereotype.Component;
 @Setter
 @Component
 @ConfigurationProperties("registration")
-public class AgentConfiguration {
+public class ResourceConfiguration {
 
     private String registrationTopic;
     private String applicationId;
-    private String requestTopic;
-    private String responseTopic;
+    private String rcsRequestTopic;
+    private String rcsResponseTopic;
 
     /**
      * Creates a TopicManagement bean.
@@ -50,7 +50,7 @@ public class AgentConfiguration {
      * @return SubscriptionHandler instance
      */
     @Bean
-    public SubscriptionHandler<Key, AgentQuery, AgentResponse> subscriptionHandler(
+    public SubscriptionHandler<Key, Schemas.ResourceRequest, Schemas.TextResourceResponse> rcsSubscriptionHandler(
             TopicManagement topicManagement,
             KafkaConfigration kafkaConfigration) {
         return new SubscriptionHandler<>(
@@ -59,8 +59,8 @@ public class AgentConfiguration {
                 kafkaConfigration,
                 registrationTopic,
                 Key.class,
-                AgentQuery.class,
-                AgentResponse.class);
+                Schemas.ResourceRequest.class,
+                Schemas.TextResourceResponse.class);
     }
 
     /**
@@ -70,12 +70,14 @@ public class AgentConfiguration {
      * @return Registration instance
      */
     @Bean
-    public Schemas.Registration registration() {
-        return new Schemas.Registration(
-                applicationId,
-                "This agent return sentiments of a human request.",
-                requestTopic,
-                responseTopic);
+    public Schemas.ResourceRegistration resourceRegistration() {
+        return new Schemas.ResourceRegistration(
+                applicationId + "-rcs",
+                "This agent return resources.",
+                rcsRequestTopic,
+                rcsResponseTopic,
+                "application/json",
+                "/rcs");
     }
 
 }

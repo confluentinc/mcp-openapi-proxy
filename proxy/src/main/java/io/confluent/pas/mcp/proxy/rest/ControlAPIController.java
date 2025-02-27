@@ -1,7 +1,8 @@
 package io.confluent.pas.mcp.proxy.rest;
 
+import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.RegistrationCoordinator;
-import io.confluent.pas.mcp.proxy.registration.models.Registration;
+import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,12 +23,16 @@ public class ControlAPIController {
     }
 
     @GetMapping("/control/registrations")
-    public List<Registration> getRegistrations() {
-        return coordinator.getAllRegistration();
+    public List<Schemas.Registration> getRegistrations() {
+        return coordinator
+                .getAllRegistrationHandlers()
+                .stream()
+                .map(RegistrationHandler::getRegistration)
+                .toList();
     }
 
     @PostMapping("/control/registration")
-    public void register(Registration registration) {
+    public void register(Schemas.Registration registration) {
         if (coordinator.isRegistered(registration.getName())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -39,7 +44,7 @@ public class ControlAPIController {
     }
 
     @PatchMapping("/control/registration")
-    public void update(Registration registration) {
+    public void update(Schemas.Registration registration) {
         if (coordinator.isRegistered(registration.getName())) {
             coordinator.register(registration);
         } else {

@@ -23,7 +23,7 @@ import java.util.Map;
  * @param <R> the type of registration
  */
 @Slf4j
-public class RegistrationService<K extends RegistrationKey, R extends Registration> {
+public class RegistrationService<K extends Schemas.RegistrationKey, R extends Schemas.Registration> {
 
     private final KafkaConfigration kafkaConfigration;
     private final Class<K> registrationKeyClass;

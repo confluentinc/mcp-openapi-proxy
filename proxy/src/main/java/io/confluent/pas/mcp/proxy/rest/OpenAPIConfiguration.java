@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.pas.mcp.proxy.registration.RegistrationCoordinator;
-import io.confluent.pas.mcp.proxy.registration.models.Registration;
+import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
@@ -83,21 +83,21 @@ public class OpenAPIConfiguration {
      * @return The paths
      */
     private Map<String, PathItem> buildPath() {
-        final List<Registration> registrations = registrationCoordinator.getAllRegistration();
+        final List<RegistrationHandler> registrationHandlers = registrationCoordinator.getAllRegistrationHandlers();
         final Map<String, PathItem> pathItems = new HashMap<>();
 
-        registrations.forEach(registration -> {
-            final String path = registration.getName();
+        registrationHandlers.forEach(registration -> {
+            final String path = registration.getRegistration().getName();
             final PathItem pathItem = new PathItem();
 
             try {
-                final Content requestBody = createRequestBody(registration.getRequestSchema().getSchema());
-                final ApiResponse response = createApiResponse(registration.getResponseSchema().getSchema());
+                final Content requestBody = createRequestBody(registration.getSchemas().getRequestSchema().getSchema());
+                final ApiResponse response = createApiResponse(registration.getSchemas().getResponseSchema().getSchema());
 
                 Operation operation = new Operation()
                         .summary(path)
                         .operationId(path)
-                        .description(registration.getDescription())
+                        .description(registration.getRegistration().getDescription())
                         .requestBody(new RequestBody().content(requestBody))
                         .responses(new ApiResponses().addApiResponse(String.valueOf(HttpStatus.OK.value()), response));
 

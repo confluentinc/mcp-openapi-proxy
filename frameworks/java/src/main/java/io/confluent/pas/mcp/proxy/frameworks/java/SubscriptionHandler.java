@@ -1,13 +1,8 @@
 package io.confluent.pas.mcp.proxy.frameworks.java;
 
-import io.confluent.pas.mcp.common.services.ConsumerService;
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
-import io.confluent.pas.mcp.common.services.ProducerService;
-import io.confluent.pas.mcp.common.services.RegistrationService;
+import io.confluent.pas.mcp.common.services.*;
 import io.confluent.pas.mcp.proxy.frameworks.java.kafka.TopicManagement;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
-import io.confluent.pas.mcp.proxy.frameworks.java.models.RegistrationKey;
-import io.confluent.pas.mcp.proxy.frameworks.java.models.Registration;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -33,7 +28,7 @@ public class SubscriptionHandler<K extends Key, REQ, RES> {
         void onRequest(Request<K, REQ, RES> request);
     }
 
-    private final RegistrationService<RegistrationKey, Registration> registrationService;
+    private final RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService;
     private final ProducerService<K, RES> responseService;
     private final ConsumerService<K, REQ> requestService;
     private final TopicManagement topicManagement;
@@ -73,8 +68,8 @@ public class SubscriptionHandler<K extends Key, REQ, RES> {
         this.registrationService = new RegistrationService<>(
                 applicationId,
                 kafkaConfigration,
-                RegistrationKey.class,
-                Registration.class,
+                Schemas.RegistrationKey.class,
+                Schemas.Registration.class,
                 registrationTopic,
                 false);
 
@@ -104,22 +99,21 @@ public class SubscriptionHandler<K extends Key, REQ, RES> {
      * @param handler      RequestHandler to handle the request
      * @throws SubscriptionException if there is an error during subscription
      */
-    public void subscribeWith(Registration registration, RequestHandler<K, REQ, RES> handler) throws SubscriptionException {
+    public void subscribeWith(Schemas.Registration registration, RequestHandler<K, REQ, RES> handler) throws SubscriptionException {
         log.info("Subscribing for registration: {}", registration.getName());
 
+        // First we create the topic for the request/response
+        try {
+            topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestClass);
+            topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseClass);
+        } catch (Exception e) {
+            log.error("Failed to create topic", e);
+            throw new SubscriptionException("Failed to create topic", e);
+        }
+
         // Register the capability
-        final io.confluent.pas.mcp.proxy.frameworks.java.models.RegistrationKey registrationKey = new RegistrationKey(registration.getName());
+        final Schemas.RegistrationKey registrationKey = new Schemas.RegistrationKey(registration.getName());
         if (!registrationService.isRegistered(registrationKey)) {
-
-            // First we create the topic for the request/response
-            try {
-                topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestClass);
-                topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseClass);
-            } catch (Exception e) {
-                log.error("Failed to create topic", e);
-                throw new SubscriptionException("Failed to create topic", e);
-            }
-
             log.info("Registering: {}", registration.getName());
             registrationService.register(registrationKey, registration);
         } else {

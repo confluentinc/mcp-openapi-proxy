@@ -87,6 +87,7 @@ public class MCPServerConfig {
                 .capabilities(McpSchema.ServerCapabilities
                         .builder()
                         .tools(true)
+                        .resources(true, true)
                         .logging()
                         .build())
                 .tools()

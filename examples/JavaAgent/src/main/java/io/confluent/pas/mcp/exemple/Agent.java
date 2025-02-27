@@ -3,8 +3,8 @@ package io.confluent.pas.mcp.exemple;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.service.AiServices;
+import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
-import io.confluent.pas.mcp.proxy.frameworks.java.models.Registration;
 import io.confluent.pas.mcp.proxy.frameworks.java.Request;
 import io.confluent.pas.mcp.proxy.frameworks.java.SubscriptionHandler;
 import jakarta.annotation.PostConstruct;
@@ -28,12 +28,12 @@ public class Agent {
     private String systemPrompt;
 
     private final SubscriptionHandler<Key, AgentQuery, AgentResponse> subscriptionHandler;
-    private final Registration registration;
+    private final Schemas.Registration registration;
     private Assistant assistant;
 
     @Autowired
     public Agent(SubscriptionHandler<Key, AgentQuery, AgentResponse> subscriptionHandler,
-                 Registration registration) {
+                 Schemas.Registration registration) {
         this.subscriptionHandler = subscriptionHandler;
         this.registration = registration;
     }

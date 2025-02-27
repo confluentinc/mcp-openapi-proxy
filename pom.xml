@@ -47,6 +47,7 @@
         <module>frameworks</module>
         <module>common</module>
         <module>./examples/JavaAgent</module>
+        <module>./examples/JavaRCSProvider</module>
     </modules>
 
     <repositories>

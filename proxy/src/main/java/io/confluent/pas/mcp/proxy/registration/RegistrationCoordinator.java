@@ -3,8 +3,7 @@ package io.confluent.pas.mcp.proxy.registration;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.pas.mcp.common.services.KafkaConfigration;
 import io.confluent.pas.mcp.common.services.RegistrationService;
-import io.confluent.pas.mcp.proxy.registration.models.Registration;
-import io.confluent.pas.mcp.proxy.registration.models.RegistrationKey;
+import io.confluent.pas.mcp.common.services.Schemas;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -29,7 +28,7 @@ public class RegistrationCoordinator {
     private final McpAsyncServer mcpServer;
     private final Map<String, RegistrationHandler> handlers = new ConcurrentHashMap<>();
     private final SchemaRegistryClient schemaRegistryClient;
-    private final RegistrationService<RegistrationKey, Registration> registrationService;
+    private final RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService;
 
     @Autowired
     public RegistrationCoordinator(KafkaConfigration kafkaConfigration,
@@ -43,8 +42,8 @@ public class RegistrationCoordinator {
         this.registrationService = new RegistrationService<>(
                 "mcp-proxy-registration",
                 kafkaConfigration,
-                RegistrationKey.class,
-                Registration.class,
+                Schemas.RegistrationKey.class,
+                Schemas.Registration.class,
                 registrationTopic,
                 false,
                 this::handleRegistration
@@ -97,8 +96,8 @@ public class RegistrationCoordinator {
      *
      * @return The registrations
      */
-    public List<Registration> getAllRegistration() {
-        return registrationService.getAllRegistrations();
+    public List<RegistrationHandler> getAllRegistrationHandlers() {
+        return handlers.values().stream().toList();
     }
 
 
@@ -107,8 +106,8 @@ public class RegistrationCoordinator {
      *
      * @param registration The registration
      */
-    public void register(Registration registration) {
-        registrationService.register(new RegistrationKey(registration.getName()), registration);
+    public void register(Schemas.Registration registration) {
+        registrationService.register(new Schemas.RegistrationKey(registration.getName()), registration);
     }
 
     /**
@@ -117,7 +116,7 @@ public class RegistrationCoordinator {
      * @param name The registration name to delete
      */
     public void unregister(String name) {
-        registrationService.unregister(new RegistrationKey(name));
+        registrationService.unregister(new Schemas.RegistrationKey(name));
     }
 
     /**
@@ -125,7 +124,7 @@ public class RegistrationCoordinator {
      *
      * @param registration The registration
      */
-    private void handleRegistration(RegistrationKey key, Registration registration) {
+    private void handleRegistration(Schemas.RegistrationKey key, Schemas.Registration registration) {
         final String registrationName = key.getName();
 
         // Unregister?

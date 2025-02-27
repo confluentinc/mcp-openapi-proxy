@@ -1,14 +1,17 @@
 package io.confluent.pas.mcp.proxy.registration;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-import io.confluent.pas.mcp.proxy.registration.models.Registration;
+import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
@@ -26,19 +29,22 @@ import java.util.concurrent.ExecutionException;
 @AllArgsConstructor
 public class RegistrationHandler {
 
+    private final static TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
+    };
     private final static ObjectMapper MAPPER = new ObjectMapper();
 
-    private final Registration registrationHolder;
+    @Getter
+    private final Schemas.Registration registration;
+    @Getter
+    private final RegistrationSchemas schemas;
     private final RequestResponseHandler requestResponseHandler;
 
-    public RegistrationHandler(Registration registration,
+    public RegistrationHandler(Schemas.Registration registration,
                                SchemaRegistryClient schemaRegistryClient,
                                RequestResponseHandler requestResponseHandler) throws RestClientException, IOException {
         this.requestResponseHandler = requestResponseHandler;
-        this.registrationHolder = registration;
-
-        // Make sure the schema is up to date
-        registration.updateSchema(schemaRegistryClient);
+        this.registration = registration;
+        this.schemas = new RegistrationSchemas(schemaRegistryClient, registration);
     }
 
     /**
@@ -48,13 +54,40 @@ public class RegistrationHandler {
      * @return a mono that completes when the registration is complete
      */
     public Mono<Void> register(McpAsyncServer mcpServer) {
-        McpSchema.Tool tool = new McpSchema.Tool(
-                registrationHolder.getName(),
-                registrationHolder.getDescription(),
-                registrationHolder.getRequestSchema().getSchema());
+        if (registration instanceof Schemas.ResourceRegistration rcsRegistration) {
+            final McpSchema.Annotations annotations = new McpSchema.Annotations(
+                    List.of(McpSchema.Role.ASSISTANT, McpSchema.Role.USER),
+                    1.0
+            );
 
+            McpSchema.Resource registration = new McpSchema.Resource(
+                    rcsRegistration.getUrl(),
+                    rcsRegistration.getName(),
+                    rcsRegistration.getDescription(),
+                    rcsRegistration.getMimeType(),
+                    annotations
+            );
+
+            log.info("Registering resource {}", rcsRegistration.getName());
+
+            final McpServerFeatures.AsyncResourceRegistration resourceRegistration = new McpServerFeatures.AsyncResourceRegistration(registration,
+                    (toolArguments) -> Mono.create(sink -> sendResourceRequest(
+                            rcsRegistration,
+                            toolArguments,
+                            sink)));
+
+            return mcpServer.addResource(resourceRegistration);
+        }
+
+
+        final McpSchema.Tool tool = new McpSchema.Tool(
+                registration.getName(),
+                registration.getDescription(),
+                schemas.getRequestSchema().getSchema());
+
+        log.info("Registering tool {}", registration.getName());
         final McpServerFeatures.AsyncToolRegistration toolRegistration = new McpServerFeatures.AsyncToolRegistration(tool,
-                (toolArguments) -> Mono.create(sink -> sendRequest(toolArguments, sink)));
+                (toolArguments) -> Mono.create(sink -> sendToolRequest(toolArguments, sink)));
 
         return mcpServer.addTool(toolRegistration);
     }
@@ -66,7 +99,7 @@ public class RegistrationHandler {
      * @return a mono that completes when the un-registration is complete
      */
     public Mono<Void> unregister(McpAsyncServer mcpServer) {
-        return mcpServer.removeTool(registrationHolder.getName());
+        return mcpServer.removeTool(registration.getName());
     }
 
     /**
@@ -81,7 +114,8 @@ public class RegistrationHandler {
         try {
             //
             return requestResponseHandler
-                    .sendRequestResponse(registrationHolder,
+                    .sendRequestResponse(registration,
+                            schemas,
                             correlationId,
                             arguments);
         } catch (ExecutionException | InterruptedException e) {
@@ -96,7 +130,7 @@ public class RegistrationHandler {
      * @param arguments the arguments to send
      * @param sink      the sink to send the response to
      */
-    protected void sendRequest(Map<String, Object> arguments, MonoSink<McpSchema.CallToolResult> sink) {
+    protected void sendToolRequest(Map<String, Object> arguments, MonoSink<McpSchema.CallToolResult> sink) {
         sendRequest(arguments).subscribe(response -> {
             // Serialize the response
             try {
@@ -107,6 +141,40 @@ public class RegistrationHandler {
                 log.error("Failed to serialize response", e);
                 sink.error(e);
             }
+        });
+    }
+
+    /**
+     * Send a request to the resource
+     *
+     * @param rcsRegistration the resource registration
+     * @param request         the read resource request
+     * @param sink            the sink to send the response to
+     */
+    protected void sendResourceRequest(Schemas.ResourceRegistration rcsRegistration,
+                                       McpSchema.ReadResourceRequest request,
+                                       MonoSink<McpSchema.ReadResourceResult> sink) {
+        final Map<String, Object> arguments = MAPPER.convertValue(request, MAP_TYPE);
+
+        sendRequest(arguments).subscribe(response -> {
+            final Schemas.ResourceResponse.ResponseType responseType = Schemas.ResourceResponse.ResponseType.fromValue(response.get("type").toString());
+
+            final McpSchema.ResourceContents content;
+            if (responseType == Schemas.ResourceResponse.ResponseType.BLOB) {
+                Schemas.TextResourceResponse resource = MAPPER.convertValue(response, Schemas.TextResourceResponse.class);
+                content = new McpSchema.TextResourceContents(
+                        resource.getUri(),
+                        resource.getMimeType(),
+                        resource.getText());
+            } else {
+                Schemas.BlobResourceResponse resource = MAPPER.convertValue(response, Schemas.BlobResourceResponse.class);
+                content = new McpSchema.BlobResourceContents(
+                        resource.getUri(),
+                        resource.getMimeType(),
+                        resource.getBlob());
+            }
+            
+            sink.success(new McpSchema.ReadResourceResult(List.of(content)));
         });
     }
 }

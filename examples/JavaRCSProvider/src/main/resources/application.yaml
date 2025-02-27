@@ -3,7 +3,7 @@ spring:
     activate:
       on-profile: "default"
   application:
-    name: "JavaAgent"
+    name: "JavaRCSProvider"
   main:
     web-application-type: none
 kafka:
@@ -18,14 +18,9 @@ kafka:
 registration:
   registration-topic: "_agent_registry"
   application-id: "SampleJavaAgent"
-  request-topic: "sample_agent_request"
-  response-topic: "sample_agent_response"
   rcs-request-topic: "sample_agent_rcs_request"
   rcs-response-topic: "sample_agent_rcs_response"
 topic:
   timeout: 10000
   partitions: 6
   replication-factor: 3
-model:
-  system-prompt: "You are specialized in sentiment analysis. Your job is to analyze the sentiment of the text and provide the sentiment score. The sentiment score is positive, negative, or neutral."
-  gemini-key: ${GEMINI_API_KEY}
