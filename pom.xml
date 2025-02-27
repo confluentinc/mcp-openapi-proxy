@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version>
+        <version>3.4.3</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -34,9 +34,9 @@
 
     <properties>
         <java.version>21</java.version>
-        <confluent.version>7.7.1</confluent.version>
+        <confluent.version>7.9.1-7</confluent.version>
         <kafka.version>3.9.0</kafka.version>
-        <kcache.version>5.1.0</kcache.version>
+        <kcache.version>5.2.0</kcache.version>
         <langchain4j.version>1.0.0-beta1</langchain4j.version>
         <reactor.version>2024.0.3</reactor.version>
     </properties>
