@@ -11,6 +11,7 @@ import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.util.UriTemplate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -27,8 +28,10 @@ import java.util.concurrent.ExecutionException;
 @AllArgsConstructor
 public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequest, Schemas.ResourceResponse> {
 
+    // Type reference for deserializing request body to a Map
     private final static TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
+    // ObjectMapper instance for JSON processing
     private final static ObjectMapper MAPPER = new ObjectMapper();
 
     @Getter
@@ -53,11 +56,25 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
      * @return a mono that completes when the registration is complete
      */
     public Mono<Void> register(McpAsyncServer mcpServer) {
+        log.info("Registering resource {}", registration.getName());
+
         final McpSchema.Annotations annotations = new McpSchema.Annotations(
                 List.of(McpSchema.Role.ASSISTANT, McpSchema.Role.USER),
                 1.0
         );
 
+        return (registration.getPatParameters() != null && !registration.getPatParameters().isEmpty())
+                ? mcpServer.addResourceTemplate(getAsyncResourceTemplateRegistration(annotations))
+                : mcpServer.addResource(getAsyncResourceRegistration(annotations));
+    }
+
+    /**
+     * Get the async resource registration
+     *
+     * @param annotations the annotations for the resource
+     * @return the async resource registration
+     */
+    private McpServerFeatures.AsyncResourceRegistration getAsyncResourceRegistration(McpSchema.Annotations annotations) {
         McpSchema.Resource resource = new McpSchema.Resource(
                 registration.getUrl(),
                 registration.getName(),
@@ -66,21 +83,39 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
                 annotations
         );
 
-        log.info("Registering resource {}", registration.getName());
-
-        final McpServerFeatures.AsyncResourceRegistration resourceRegistration = new McpServerFeatures.AsyncResourceRegistration(
+        return new McpServerFeatures.AsyncResourceRegistration(
                 resource,
-                (toolArguments) -> Mono.create(sink -> sendRequest(
-                        registration,
-                        toolArguments,
+                (arguments) -> Mono.create(sink -> sendRequest(
+                        arguments,
                         sink)));
+    }
 
-        return mcpServer.addResource(resourceRegistration);
+    /**
+     * Get the async resource template registration
+     *
+     * @param annotations the annotations for the resource
+     * @return the async resource template registration
+     */
+    private McpServerFeatures.AsyncResourceTemplateRegistration getAsyncResourceTemplateRegistration(McpSchema.Annotations annotations) {
+        McpSchema.ResourceTemplate template = new McpSchema.ResourceTemplate(
+                registration.getUrl(),
+                registration.getName(),
+                registration.getDescription(),
+                registration.getMimeType(),
+                annotations
+        );
+
+        return new McpServerFeatures.AsyncResourceTemplateRegistration(
+                template,
+                new UriTemplate(registration.getUrl()),
+                (arguments) -> Mono.create(sink -> sendRequest(
+                        arguments,
+                        sink)));
     }
 
     @Override
     public Mono<Void> unregister(McpAsyncServer mcpServer) {
-        return null;
+        return mcpServer.removeResource(registration.getName());
     }
 
     @Override
@@ -91,6 +126,12 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
                 .map(response -> MAPPER.convertValue(response, Schemas.ResourceResponse.class));
     }
 
+    /**
+     * Send a request to the resource
+     *
+     * @param arguments the request arguments
+     * @return a mono containing the response
+     */
     protected Mono<Map<String, Object>> sendRequest(Map<String, Object> arguments) {
         final String correlationId = UUID.randomUUID().toString();
 
@@ -109,13 +150,10 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
     /**
      * Send a request to the resource
      *
-     * @param rcsRegistration the resource registration
-     * @param request         the read resource request
-     * @param sink            the sink to send the response to
+     * @param request the read resource request
+     * @param sink    the sink to send the response to
      */
-    protected void sendRequest(Schemas.ResourceRegistration rcsRegistration,
-                               McpSchema.ReadResourceRequest request,
-                               MonoSink<McpSchema.ReadResourceResult> sink) {
+    protected void sendRequest(McpSchema.ReadResourceRequest request, MonoSink<McpSchema.ReadResourceResult> sink) {
         final Map<String, Object> arguments = MAPPER.convertValue(request, MAP_TYPE);
 
         sendRequest(arguments).subscribe(response -> {
@@ -123,17 +161,17 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
 
             final McpSchema.ResourceContents content;
             if (responseType == Schemas.ResourceResponse.ResponseType.BLOB) {
-                Schemas.TextResourceResponse resource = MAPPER.convertValue(response, Schemas.TextResourceResponse.class);
-                content = new McpSchema.TextResourceContents(
-                        resource.getUri(),
-                        resource.getMimeType(),
-                        resource.getText());
-            } else {
                 Schemas.BlobResourceResponse resource = MAPPER.convertValue(response, Schemas.BlobResourceResponse.class);
                 content = new McpSchema.BlobResourceContents(
                         resource.getUri(),
                         resource.getMimeType(),
                         resource.getBlob());
+            } else {
+                Schemas.TextResourceResponse resource = MAPPER.convertValue(response, Schemas.TextResourceResponse.class);
+                content = new McpSchema.TextResourceContents(
+                        resource.getUri(),
+                        resource.getMimeType(),
+                        resource.getText());
             }
 
             sink.success(new McpSchema.ReadResourceResult(List.of(content)));

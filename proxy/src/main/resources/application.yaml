@@ -1,6 +1,39 @@
 spring:
   config:
     activate:
+      on-profile: "production"
+  application:
+    name: "Confluent MCP Proxy"
+  mvc:
+    async:
+      request-timeout: 60000
+  main:
+    web-application-type: reactive
+mcp:
+  server:
+    name: "Confluent MCP Proxy"
+    version: 1.0.0
+kafka:
+  broker:
+    url: ${BROKER_URL}
+    security_protocol: SASL_SSL
+    sasl_mechanism: PLAIN
+    jaas_config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
+  schema-registry:
+    url: ${SR_URL}
+    auth_info: ${SR_API_KEY}:${SR_API_SECRET}
+registration:
+  topic: "_agent_registry"
+transport:
+  mode: "sse"
+authentication:
+  cache-size: 100
+  cache-expiry-in-second: 300
+  enabled: true
+---
+spring:
+  config:
+    activate:
       on-profile: "default"
   application:
     name: "Confluent MCP Proxy"
@@ -29,6 +62,7 @@ transport:
 authentication:
   cache-size: 100
   cache-expiry-in-second: 300
+  enabled: false
 ---
 spring:
   config:
@@ -58,6 +92,6 @@ transport:
   mode: "stdio"
 logging:
   file:
-    name: "/Users/pascal/projects/demos/ai/mcp/proxy/logs/mcp-proxy.log"
+    name: "./logs/mcp-proxy.log"
   pattern:
     console: ""

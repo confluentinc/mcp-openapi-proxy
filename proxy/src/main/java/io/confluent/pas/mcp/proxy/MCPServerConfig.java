@@ -3,6 +3,7 @@ package io.confluent.pas.mcp.proxy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import io.modelcontextprotocol.server.McpServer;
+import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.transport.StdioServerTransport;
 import io.modelcontextprotocol.server.transport.WebFluxSseServerTransport;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -13,6 +14,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
+import reactor.core.publisher.Mono;
+
+import java.util.List;
+
+import static io.modelcontextprotocol.spec.McpSchema.Role.ASSISTANT;
+import static io.modelcontextprotocol.spec.McpSchema.Role.USER;
 
 /**
  * Configuration class for the MCP server.
@@ -85,10 +92,27 @@ public class MCPServerConfig {
                 .capabilities(McpSchema.ServerCapabilities
                         .builder()
                         .tools(true)
-                        .resources(true, true)
+                        .resources(false, true)
                         .logging()
                         .build())
                 .tools()
+                .resources(new McpServerFeatures.AsyncResourceRegistration(
+                        new McpSchema.Resource(
+                                "/health",
+                                "Health Check",
+                                "Health check endpoint",
+                                "application/json",
+                                new McpSchema.Annotations(List.of(ASSISTANT, USER), 1.0)
+                        ),
+                        (arguments) -> healthCheck()
+                ))
                 .build();
+    }
+
+    public Mono<McpSchema.ReadResourceResult> healthCheck() {
+        final McpSchema.TextResourceContents healthCheck = new McpSchema.TextResourceContents("/health", "application/json", "{\"status\": \"ok\"}");
+        final McpSchema.ReadResourceResult result = new McpSchema.ReadResourceResult(List.of(healthCheck));
+
+        return Mono.just(result);
     }
 }

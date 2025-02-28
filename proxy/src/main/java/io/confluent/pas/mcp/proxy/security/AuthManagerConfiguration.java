@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -23,6 +24,8 @@ public class AuthManagerConfiguration {
     private int cacheSize = 100;
     @Value("${authentication.cache-expiry-in-second}")
     private int cacheExpiry = 3600;
+    @Value("${authentication.enabled}")
+    private boolean authenticationEnabled = true;
 
     /**
      * Configures the security filter chain for the server.
@@ -36,7 +39,15 @@ public class AuthManagerConfiguration {
     @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "sse")
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
                                                             KafkaConfigration.SR schemaRegistryConfig) {
-        http.authorizeExchange((exchanges) -> exchanges.anyExchange().authenticated())
+        if (!authenticationEnabled) {
+            return http.authorizeExchange((exchanges) -> exchanges.anyExchange().permitAll())
+                    .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                    .headers(Customizer.withDefaults())
+//                    .authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry))
+                    .build();
+        }
+
+        return http.authorizeExchange((exchanges) -> exchanges.anyExchange().authenticated())
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .httpBasic((httpBasicSpec) -> {
                     httpBasicSpec.authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry));
@@ -44,9 +55,7 @@ public class AuthManagerConfiguration {
                 .formLogin((httpBasicSpec) -> {
                     httpBasicSpec.authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry));
                 })
-                .anonymous(ServerHttpSecurity.AnonymousSpec::disable)
-                .authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry));
-
-        return http.build();
+                .authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry))
+                .build();
     }
 }
