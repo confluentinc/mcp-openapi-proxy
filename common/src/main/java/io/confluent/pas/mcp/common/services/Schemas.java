@@ -6,6 +6,9 @@ import lombok.*;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+import java.util.stream.Stream;
+
 public class Schemas {
 
     @Schema(value = """
@@ -106,8 +109,15 @@ public class Schemas {
         public Registration(String name, String description, String requestTopicName, String responseTopicName) {
             this(TOOL, name, description, requestTopicName, responseTopicName, CORRELATION_ID_FIELD_NAME);
         }
+
+        @JsonIgnore
+        public boolean isResource() {
+            return StringUtils.equals(registrationType, RESOURCE);
+        }
     }
 
+    @Setter
+    @Getter
     @Schema(value = """
             {
                "properties":{
@@ -176,14 +186,33 @@ public class Schemas {
                "title":"Record",
                "type":"object"
             }""", refs = {})
-    @Getter
-    @Setter
     @AllArgsConstructor
     @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ResourceRegistration extends Registration {
         private String mimeType;
         private String url;
+
+        @JsonIgnore
+        private List<String> pathSegments;
+
+        @JsonIgnore
+        private List<String> patParameters;
+
+        public void setUrl(String url) {
+            if (StringUtils.isBlank(url)) {
+                throw new IllegalArgumentException("url cannot be blank");
+            }
+
+            this.url = url.startsWith("/") ? url.substring(1) : url;
+            this.pathSegments = Stream.of(this.url.split("/"))
+                    .filter(StringUtils::isNotEmpty)
+                    .toList();
+            this.patParameters = pathSegments.stream()
+                    .filter(s -> s.startsWith("{") && s.endsWith("}"))
+                    .map(s -> s.substring(1, s.length() - 1))
+                    .toList();
+        }
 
         public ResourceRegistration(String name,
                                     String description,
@@ -194,7 +223,7 @@ public class Schemas {
                                     String url) {
             super(RESOURCE, name, description, requestTopicName, responseTopicName, correlationIdFieldName);
             this.mimeType = mimeType;
-            this.url = url;
+            setUrl(url);
         }
 
         public ResourceRegistration(String name,
@@ -205,7 +234,7 @@ public class Schemas {
                                     String url) {
             super(RESOURCE, name, description, requestTopicName, responseTopicName, CORRELATION_ID_FIELD_NAME);
             this.mimeType = mimeType;
-            this.url = url;
+            setUrl(url);
         }
     }
 

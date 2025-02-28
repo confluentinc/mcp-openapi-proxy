@@ -5,8 +5,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.RegistrationCoordinator;
 import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
+import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
@@ -15,6 +17,7 @@ import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
@@ -30,7 +33,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * OpenAPI configuration
+ * Configuration class for OpenAPI.
  */
 @Slf4j
 @Configuration
@@ -61,6 +64,11 @@ public class OpenAPIConfiguration {
         this.registrationCoordinator = registrationCoordinator;
     }
 
+    /**
+     * Bean for OpenAPI configuration.
+     *
+     * @return the OpenAPI instance
+     */
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
@@ -70,6 +78,11 @@ public class OpenAPIConfiguration {
                         .license(new License().name("Apache 2.0").url("https://confluent.io")));
     }
 
+    /**
+     * Bean for customizing OpenAPI paths.
+     *
+     * @return the OpenApiCustomizer instance
+     */
     @Bean
     public OpenApiCustomizer openApiCustomizer() {
         return openAPI -> openAPI
@@ -83,21 +96,29 @@ public class OpenAPIConfiguration {
      * @return The paths
      */
     private Map<String, PathItem> buildPath() {
-        final List<RegistrationHandler> registrationHandlers = registrationCoordinator.getAllRegistrationHandlers();
+        final List<RegistrationHandler<?, ?>> registrationHandlers = registrationCoordinator.getAllRegistrationHandlers();
         final Map<String, PathItem> pathItems = new HashMap<>();
 
-        registrationHandlers.forEach(registration -> {
-            final String path = registration.getRegistration().getName();
+        registrationHandlers.forEach(handler -> {
+            final Schemas.Registration registration = handler.getRegistration();
+            final RegistrationSchemas schemas = handler.getSchemas();
+
+            if (registration instanceof Schemas.ResourceRegistration resourceRegistration) {
+                addResourcePath(resourceRegistration, registration, pathItems);
+                return;
+            }
+
+            final String path = registration.getName();
             final PathItem pathItem = new PathItem();
 
             try {
-                final Content requestBody = createRequestBody(registration.getSchemas().getRequestSchema().getSchema());
-                final ApiResponse response = createApiResponse(registration.getSchemas().getResponseSchema().getSchema());
+                final Content requestBody = createRequestBody(schemas.getRequestSchema().getSchema());
+                final ApiResponse response = createApiResponse(schemas.getResponseSchema().getSchema());
 
                 Operation operation = new Operation()
                         .summary(path)
                         .operationId(path)
-                        .description(registration.getRegistration().getDescription())
+                        .description(registration.getDescription())
                         .requestBody(new RequestBody().content(requestBody))
                         .responses(new ApiResponses().addApiResponse(String.valueOf(HttpStatus.OK.value()), response));
 
@@ -112,17 +133,66 @@ public class OpenAPIConfiguration {
     }
 
     /**
-     * Create a request body from the request schema
+     * Adds a resource path to the path items map.
      *
-     * @param requestSchema The request schema
-     * @return The request body
-     * @throws JsonProcessingException If the request schema cannot be parsed
+     * @param resourceRegistration the resource registration
+     * @param registration         the registration
+     * @param pathItems            the path items map
+     */
+    private void addResourcePath(Schemas.ResourceRegistration resourceRegistration,
+                                 Schemas.Registration registration,
+                                 Map<String, PathItem> pathItems) {
+        final PathItem pathItem = new PathItem();
+        final String path = resourceRegistration.getUrl();
+
+        final ApiResponse response = createApiResponse(resourceRegistration);
+        Operation operation = new Operation()
+                .summary(path)
+                .operationId(path)
+                .description(registration.getDescription())
+                .responses(new ApiResponses().addApiResponse(String.valueOf(HttpStatus.OK.value()), response));
+
+        pathItem.operation(PathItem.HttpMethod.GET, operation);
+
+        // Add parameter for resource name
+        resourceRegistration.getPatParameters()
+                .forEach(name -> pathItem.addParametersItem(new Parameter()
+                        .name(name)
+                        .in("path")
+                        .required(true)
+                        .schema(new Schema<>().type("string"))));
+
+        pathItems.put("/rcs/" + path, pathItem);
+    }
+
+    /**
+     * Creates a request body from the request schema.
+     *
+     * @param requestSchema the request schema
+     * @return the content for the request body
+     * @throws JsonProcessingException if the request schema cannot be parsed
      */
     private Content createRequestBody(String requestSchema) throws JsonProcessingException {
         final JsonSchema requestSchemaProperties = OBJECT_MAPPER.readValue(requestSchema, JsonSchema.class);
         final Content requestBody = new Content();
         requestBody.addMediaType("application/json", new MediaType().schema(getSchema(requestSchemaProperties)));
         return requestBody;
+    }
+
+    /**
+     * Creates an API response from the response schema.
+     *
+     * @param registration the resource registration
+     * @return the API response
+     */
+    private ApiResponse createApiResponse(Schemas.ResourceRegistration registration) {
+        final Content content = new Content();
+        content.addMediaType(registration.getMimeType(), new MediaType());
+
+        final ApiResponse response = new ApiResponse();
+        response.content(content);
+        response.description(HttpStatus.OK.getReasonPhrase());
+        return response;
     }
 
     /**
@@ -141,7 +211,10 @@ public class OpenAPIConfiguration {
     }
 
     /**
-     * Create a schema from the schema properties
+     * Creates a schema from the schema properties.
+     *
+     * @param schemaProperties the schema properties
+     * @return the schema
      */
     @SuppressWarnings("unchecked")
     @NotNull
@@ -177,6 +250,12 @@ public class OpenAPIConfiguration {
         return schema;
     }
 
+    /**
+     * Gets the property type from the property map.
+     *
+     * @param property the property map
+     * @return a set of property types
+     */
     @SuppressWarnings("unchecked")
     private static Set<String> getPropertyType(Map<String, Object> property) {
         if (property.containsKey("type")) {

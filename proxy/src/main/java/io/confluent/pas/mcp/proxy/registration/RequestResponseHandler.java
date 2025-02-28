@@ -7,7 +7,6 @@ import io.confluent.pas.mcp.proxy.registration.internal.KafkaConfigurationImpl;
 import io.confluent.pas.mcp.proxy.registration.internal.KafkaResponseHandler;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -23,12 +22,10 @@ import java.util.concurrent.ExecutionException;
 @Component
 public class RequestResponseHandler {
 
-    private final KafkaConfigurationImpl kafkaConfigration;
     private final ProducerService<JsonNode, JsonNode> producerService;
     private final KafkaResponseHandler kafkaResponseHandler;
 
     public RequestResponseHandler(@Autowired KafkaConfigurationImpl kafkaConfigration) {
-        this.kafkaConfigration = kafkaConfigration;
         this.kafkaResponseHandler = new KafkaResponseHandler("mcp-proxy-response", kafkaConfigration);
         this.producerService = new ProducerService<>("mcp-proxy-request", kafkaConfigration);
     }
@@ -65,15 +62,4 @@ public class RequestResponseHandler {
                 .doOnSuccess(metadata -> log.info("Sent request to topic: {}", registration.getRequestTopicName()))
                 .then(sink.asMono());
     }
-
-
-    /**
-     * Create a new producer
-     *
-     * @return the producer
-     */
-    private KafkaProducer<JsonNode, JsonNode> createNewProducer() {
-        return new KafkaProducer<>(kafkaConfigration.getProducerProperties("mcp-proxy-request"));
-    }
-
 }

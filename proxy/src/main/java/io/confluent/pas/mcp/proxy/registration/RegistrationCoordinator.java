@@ -4,6 +4,8 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.pas.mcp.common.services.KafkaConfigration;
 import io.confluent.pas.mcp.common.services.RegistrationService;
 import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.proxy.registration.handlers.ResourceHandler;
+import io.confluent.pas.mcp.proxy.registration.handlers.ToolHandler;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -26,7 +28,7 @@ public class RegistrationCoordinator {
 
     private final RequestResponseHandler requestResponseHandler;
     private final McpAsyncServer mcpServer;
-    private final Map<String, RegistrationHandler> handlers = new ConcurrentHashMap<>();
+    private final Map<String, RegistrationHandler<?, ?>> handlers = new ConcurrentHashMap<>();
     private final SchemaRegistryClient schemaRegistryClient;
     private final RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService;
 
@@ -87,7 +89,7 @@ public class RegistrationCoordinator {
      * @param name The name of the tool
      * @return The registration handler
      */
-    public RegistrationHandler getRegistrationHandler(String name) {
+    public RegistrationHandler<?, ?> getRegistrationHandler(String name) {
         return handlers.get(name);
     }
 
@@ -96,7 +98,7 @@ public class RegistrationCoordinator {
      *
      * @return The registrations
      */
-    public List<RegistrationHandler> getAllRegistrationHandlers() {
+    public List<RegistrationHandler<?, ?>> getAllRegistrationHandlers() {
         return handlers.values().stream().toList();
     }
 
@@ -146,10 +148,9 @@ public class RegistrationCoordinator {
         }
 
         try {
-            RegistrationHandler handler = new RegistrationHandler(
-                    registration,
-                    schemaRegistryClient,
-                    requestResponseHandler);
+            final RegistrationHandler<?, ?> handler = (registration instanceof Schemas.ResourceRegistration rcsRegistration)
+                    ? new ResourceHandler(rcsRegistration, schemaRegistryClient, requestResponseHandler)
+                    : new ToolHandler(registration, schemaRegistryClient, requestResponseHandler);
 
             handler.register(mcpServer)
                     .doOnSuccess(v -> {
@@ -172,7 +173,7 @@ public class RegistrationCoordinator {
      * @param registrationName The registration name
      */
     private void unregisterHandler(String registrationName) {
-        final RegistrationHandler handler = handlers.get(registrationName);
+        final RegistrationHandler<?, ?> handler = handlers.get(registrationName);
         handler.unregister(mcpServer)
                 .doOnSuccess(v -> {
                     log.info("Removed tool registration: {}", registrationName);

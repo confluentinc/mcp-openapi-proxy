@@ -77,7 +77,7 @@ public class ResourceConfiguration {
                 rcsRequestTopic,
                 rcsResponseTopic,
                 "application/json",
-                "/rcs");
+                "/client/{client_id}");
     }
 
 }
