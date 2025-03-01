@@ -1,6 +1,7 @@
 package io.confluent.pas.mcp.exemple;
 
 import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.common.utils.UriTemplate;
 import io.confluent.pas.mcp.proxy.frameworks.java.Request;
 import io.confluent.pas.mcp.proxy.frameworks.java.SubscriptionHandler;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
@@ -10,18 +11,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 @Slf4j
 @Component
 public class ResourceAgent {
 
     private final SubscriptionHandler<Key, Schemas.ResourceRequest, Schemas.TextResourceResponse> subscriptionHandler;
     private final Schemas.ResourceRegistration registration;
+    private final UriTemplate template;
 
     @Autowired
     public ResourceAgent(SubscriptionHandler<Key, Schemas.ResourceRequest, Schemas.TextResourceResponse> subscriptionHandler,
                          Schemas.ResourceRegistration registration) {
         this.subscriptionHandler = subscriptionHandler;
         this.registration = registration;
+        this.template = new UriTemplate(registration.getUrl());
+
     }
 
     /**
@@ -53,10 +59,12 @@ public class ResourceAgent {
     private void onRequest(Request<Key, Schemas.ResourceRequest, Schemas.TextResourceResponse> request) {
         log.info("Received request: {}", request.getRequest().getUri());
 
+        final Map<String, Object> values = this.template.match(request.getRequest().getUri());
+
         request.respond(new Schemas.TextResourceResponse(
                         request.getRequest().getUri(),
                         registration.getMimeType(),
-                        "{ \"message\": \"Hello, World!\" }"
+                        "{ \"message\": \"Hello, " + values.get("client_id") + "!\" }"
                 ))
                 .doOnError(e -> log.error("Failed to respond to request", e))
                 .block();

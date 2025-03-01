@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.common.utils.UriTemplate;
 import io.confluent.pas.mcp.proxy.registration.RegistrationCoordinator;
 import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
@@ -155,13 +156,23 @@ public class OpenAPIConfiguration {
         pathItem.operation(PathItem.HttpMethod.GET, operation);
 
         // Add parameter for resource name
-        resourceRegistration.getPatParameters()
-                .forEach(name -> pathItem.addParametersItem(new Parameter()
-                        .name(name)
-                        .in("path")
-                        .required(true)
-                        .schema(new Schema<>().type("string"))));
-
+        UriTemplate template = new UriTemplate(path);
+        template.getParts()
+                .stream()
+                .filter(part -> part instanceof UriTemplate.TemplatePart)
+                .forEach(part -> {
+                    UriTemplate.TemplatePart templatePart = (UriTemplate.TemplatePart) part;
+                    if (templatePart.getNames() != null) {
+                        templatePart.getNames().forEach(name -> {
+                            pathItem.addParametersItem(new Parameter()
+                                    .name(name)
+                                    .in("path")
+                                    .required(true)
+                                    .schema(new Schema<>().type("string")));
+                        });
+                    }
+                });
+        
         pathItems.put("/rcs/" + path, pathItem);
     }
 

@@ -63,7 +63,7 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
                 1.0
         );
 
-        return (registration.getPatParameters() != null && !registration.getPatParameters().isEmpty())
+        return (registration.isTemplate())
                 ? mcpServer.addResourceTemplate(getAsyncResourceTemplateRegistration(annotations))
                 : mcpServer.addResource(getAsyncResourceRegistration(annotations));
     }

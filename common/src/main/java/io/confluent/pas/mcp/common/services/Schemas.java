@@ -2,12 +2,10 @@ package io.confluent.pas.mcp.common.services;
 
 import com.fasterxml.jackson.annotation.*;
 import io.confluent.kafka.schemaregistry.annotations.Schema;
+import io.confluent.pas.mcp.common.utils.UriUtils;
 import lombok.*;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.List;
-import java.util.stream.Stream;
 
 public class Schemas {
 
@@ -193,25 +191,17 @@ public class Schemas {
         private String mimeType;
         private String url;
 
-        @JsonIgnore
-        private List<String> pathSegments;
-
-        @JsonIgnore
-        private List<String> patParameters;
-
         public void setUrl(String url) {
             if (StringUtils.isBlank(url)) {
                 throw new IllegalArgumentException("url cannot be blank");
             }
 
             this.url = url.startsWith("/") ? url.substring(1) : url;
-            this.pathSegments = Stream.of(this.url.split("/"))
-                    .filter(StringUtils::isNotEmpty)
-                    .toList();
-            this.patParameters = pathSegments.stream()
-                    .filter(s -> s.startsWith("{") && s.endsWith("}"))
-                    .map(s -> s.substring(1, s.length() - 1))
-                    .toList();
+        }
+
+        @JsonIgnore
+        public boolean isTemplate() {
+            return UriUtils.isTemplate(url);
         }
 
         public ResourceRegistration(String name,
