@@ -281,7 +281,7 @@ public class Schemas {
                      "connect.index":0,
                      "enum":[
                         "text",
-                        "bool"
+                        "blob"
                      ],
                      "default": "text",
                      "type":"string"
@@ -382,7 +382,7 @@ public class Schemas {
                      "connect.index":0,
                      "enum":[
                         "text",
-                        "bool"
+                        "blob"
                      ],
                      "default": "text",
                      "type":"string"
@@ -447,7 +447,7 @@ public class Schemas {
                      "connect.index":0,
                      "enum":[
                         "text",
-                        "bool"
+                        "blob"
                      ],
                      "default": "text",
                      "type":"string"
