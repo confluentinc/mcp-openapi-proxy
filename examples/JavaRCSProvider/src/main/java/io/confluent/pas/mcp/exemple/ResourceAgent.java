@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+/**
+ * Agent class responsible for delivering resources.
+ */
 @Slf4j
 @Component
 public class ResourceAgent {
@@ -21,17 +24,22 @@ public class ResourceAgent {
     private final Schemas.ResourceRegistration registration;
     private final UriTemplate template;
 
+    /**
+     * Constructor to initialize the ResourceAgent with required dependencies.
+     *
+     * @param subscriptionHandler Handles subscription-related operations.
+     * @param registration        Contains registration details for the resource.
+     */
     @Autowired
     public ResourceAgent(SubscriptionHandler<Key, Schemas.ResourceRequest, Schemas.TextResourceResponse> subscriptionHandler,
                          Schemas.ResourceRegistration registration) {
         this.subscriptionHandler = subscriptionHandler;
         this.registration = registration;
         this.template = new UriTemplate(registration.getUrl());
-
     }
 
     /**
-     * Initializes the agent by starting the subscription handler and setting up the assistant.
+     * Initializes the agent by starting the subscription handler and setting up the subscription.
      */
     @PostConstruct
     public void init() {
@@ -52,15 +60,17 @@ public class ResourceAgent {
     }
 
     /**
-     * Handles incoming requests by processing the query and responding with the sentiment analysis result.
+     * Handles incoming requests by processing the query and responding with a message.
      *
      * @param request The incoming request containing the query.
      */
     private void onRequest(Request<Key, Schemas.ResourceRequest, Schemas.TextResourceResponse> request) {
         log.info("Received request: {}", request.getRequest().getUri());
 
+        // Extract values from the URI using the template
         final Map<String, Object> values = this.template.match(request.getRequest().getUri());
 
+        // Respond to the request with a message containing the client_id
         request.respond(new Schemas.TextResourceResponse(
                         request.getRequest().getUri(),
                         registration.getMimeType(),

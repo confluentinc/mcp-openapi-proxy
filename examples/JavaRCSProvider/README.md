@@ -1,20 +1,19 @@
-# Java-Based Sentiment Analysis Agent
+# Java-Based Resource Delivery Agent
 
 [Back to Main README](../../README.md)
 
 ## Overview
 
-This sample demonstrates how to build a **Java-based sentiment analysis agent** that processes incoming requests,
-performs sentiment classification, and exposes the results via the **MCP/OpenAPI Proxy**. This enables seamless
-integration with other agents or applications.
+This sample demonstrates how to build a **Java-based resource provider** that processes incoming requests and delivers
+resources via the **MCP/OpenAPI Proxy**. This enables seamless integration with other agents or applications.
 
 ## Architecture
 
 ```
- +-------------------+        +----------------------------+        +-------------------+
- |  Incoming Request | -----> |  MCP/OpenAPI Proxy         | -----> | Java Sentiment    |
- |   (MCP Client)    |        |  (Exposes Java Agent)      |        | Analysis Agent    |
- +-------------------+        +----------------------------+        +-------------------+
++-------------------+         +----------------------------+        +------------------+
+ |  Incoming Request | -----> |  MCP/OpenAPI Proxy         | -----> | Java Resource    |
+ |   (MCP Client)    |        |  (Exposes Java Agent)      |        | Delivery Agent   |
+ +-------------------+        +----------------------------+        +------------------+
                                                                         |
                                                                         v
                                                         +----------------------------+
@@ -46,186 +45,68 @@ mvn clean install
 
 ## Running the Agent
 
-Start the Java-based sentiment analysis agent:
+Start the Java-based resource delivery agent:
 
 ```sh
-java -jar ./exemples/JavaAgent/target/JavaAgent-0.0.1-SNAPSHOT.jar
+java -jar ./examples/JavaRCSProvider/target/JavaRCSProvider-0.0.1-SNAPSHOT.jar
 ```
 
-## Configuration
+## Demo Execution with MCP Inspector
 
-The agent requires the following environment variables:
+To test the agent using the MCP Inspector, follow these steps:
 
-### Required Environment Variables
+### Step 1: Install and Start MCP Inspector
 
-- `BROKER_URL` - Confluent Cloud broker URL
-- `JAAS_USERNAME` - Authentication username
-- `JAAS_PASSWORD` - Authentication password
-- `SR_URL` - Schema Registry URL
-- `SR_API_KEY` - Schema Registry API key
-- `SR_API_SECRET` - Schema Registry API secret
-- `GEMINI_API_KEY` - API key for accessing Gemini model
+Run the following command:
 
-## Java Implementation
+```sh
+npx mcp-inspector@latest
+```
 
-### Core Agent Implementation
+This command will open the MCP Inspector interface in your default web browser.
 
-The main Java class that processes incoming sentiment analysis requests and integrates with the Gemini model:
+### Step 2: Connect to MCP Server
 
-```java
+In the MCP Inspector interface:
 
-/**
- * Agent class responsible for handling sentiment analysis requests.
- */
-@Slf4j
-@Component
-public class Agent {
+- Enter the MCP server URL (e.g., `http://localhost:8080`).
+- Click **Connect**.
 
-    @Value("${model.gemini-key}")
-    private String geminiKey;
+### Step 3: List Available Resources
 
-    @Value("${model.system-prompt}")
-    private String systemPrompt;
+- Go to the **Resources** section in the MCP Inspector UI.
+- View the list of available resources, including `JavaResourceAgent`.
 
-    private final SubscriptionHandler<Key, AgentQuery, AgentResponse> subscriptionHandler;
-    private final Registration registration;
-    private Assistant assistant;
+### Step 4: Send Requests and Test
 
-    @Autowired
-    public Agent(SubscriptionHandler<Key, AgentQuery, AgentResponse> subscriptionHandler,
-                 Registration registration) {
-        this.subscriptionHandler = subscriptionHandler;
-        this.registration = registration;
+- Select the `/client/{client_id}` tool.
+- Use the request form to send a sample request, such as:
+
+```
+John
+```
+
+- Submit the request and view the response directly in the interface.
+
+### Example Output
+
+```json
+{
+  "contents": [
+    {
+      "uri": "client/Bob",
+      "mimeType": "application/json",
+      "text": "{ \"message\": \"Hello, Bob!\" }"
     }
-
-    /**
-     * Initializes the agent by starting the subscription handler and setting up the assistant.
-     */
-    @PostConstruct
-    public void init() {
-        // Start the subscription handler
-        subscriptionHandler.start();
-
-        // Subscribe using the registration information and handle requests with the onRequest method
-        subscriptionHandler.subscribeWith(registration, this::onRequest);
-
-        // Create a ChatLanguageModel using the Google AI Gemini model
-        final ChatLanguageModel chatLanguageModel = GoogleAiGeminiChatModel.builder()
-                .apiKey(geminiKey)
-                .modelName("gemini-2.0-flash")
-                .build();
-
-        // Build the assistant using the AI services
-        assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .systemMessageProvider((val) -> systemPrompt)
-                .build();
-    }
-
-    /**
-     * Cleans up resources by stopping the subscription handler.
-     */
-    @PreDestroy
-    public void destroy() {
-        // Stop the subscription handler
-        subscriptionHandler.stop();
-    }
-
-    /**
-     * Handles incoming requests by processing the query and responding with the sentiment analysis result.
-     *
-     * @param request The incoming request containing the query.
-     */
-    private void onRequest(Request<Key, AgentQuery, AgentResponse> request) {
-        log.info("Received request: {}", request.getRequest().query());
-
-        // Process the query using the assistant and get the response
-        final String response = assistant.chat(request.getRequest().query());
-
-        // Respond to the request with the sentiment analysis result
-        request.respond(new AgentResponse(response))
-                .doOnError(e -> log.error("Failed to respond", e))
-                .block();
-    }
+  ]
 }
-
 ```
 
-The agent is registered when calling the `subscriptionHandler.subscribe(registration, this::onRequest);` method. The *
-*registration** is injected using Spring Boot's autowiring capability, and it defines the agent's metadata and
-associated topics.
+### Viewing Logs
 
-#### Registration Bean Definition
-
-```java
-
-@Bean
-public Registration registration() {
-    return new Registration(
-            applicationId,
-            "This agent returns sentiments of a human request.",
-            requestTopic,
-            responseTopic);
-}
-
-```
-
-## Demo Execution
-
-To test the agent, follow these steps:
-
-### Step 1: Start the MCP/OpenAPI Proxy
-
-```sh
-java -jar proxy/target/proxy-0.0.1-SNAPSHOT.jar
-```
-
-### Step 2: Start the Java Sentiment Agent
-
-```sh
-java -jar exemples/JavaAgent/target/JavaAgent-0.0.1-SNAPSHOT.jar
-```
-
-### Step 3: Send Sample Requests
-
-Send sentiment requests via the MCP shell:
-
-```sh
-mcp add sse http://localhost:8080
-mcp list tools "MCP Server"
-llm gemini
-```
-
-### Example Interaction in MCP Shell
-
-```sh
-shell:> mcp list tools "Confluent MCP Proxy"
---------------------
-Tools for server: Confluent MCP Proxy
-....................
-Name: JavaSentimentAgent
-Description: This agent analyzes sentiment in human queries.
---------------------
-shell:> llm gemini
-Starting conversation with Gemini model...
-Conversation started
-User: Hello, I am feeling happy today!
-Assistant: Your sentiment is Positive.
-User: exit
-Conversation ended
-shell:> exit
-```
+- Navigate to the **History** section in the MCP Inspector UI to view real-time logs and responses.
 
 ## Conclusion
 
-This sample illustrates how a **Java-based Agent** can be exposed as an **MCP/OpenAPI service**, enabling seamless
-integration with **MCP/OpenAPI clients**. By leveraging the **MCP/OpenAPI Proxy**, real-time sentiment analysis can be
-efficiently integrated into a broader ecosystem.
-
-## Contributing
-
-Contributions are welcome! Feel free to open issues and submit pull requests.
-
-## License
-
-This project is licensed under the MIT License.
+This sample illustrates how to use MCP Inspector's web interface for testing resource delivery alongside the MCP/OpenAPI
+service.
