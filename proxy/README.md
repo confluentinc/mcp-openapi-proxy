@@ -4,63 +4,170 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Key Features](#key-features)
-3. [Registry Schema](#registry-schema)
-    - [Tools Schema Definition](#tools-schema-definition)
-4. [Request/Response Schema](#requestresponse-schema)
-    - [Request Schema](#request-schema)
-    - [Response Schema](#response-schema)
-    - [Resource Schema Definition](#resource-schema-definition)
-5. [Request/Response Schema Definitions](#requestresponse-schema-definitions)
-    - [Request Schema Definition](#request-schema-definition)
-    - [Response Schemas Definition](#response-schemas-definition)
-        - [Text Resource Response Schema](#text-resource-response-schema)
-        - [Blob Resource Response Schema](#blob-resource-response-schema)
-6. [Correlation ID for Request/Response Handling](#correlation-id-for-requestresponse-handling)
-7. [Running the Proxy](#running-the-proxy)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-    - [Starting the Proxy](#starting-the-proxy)
-8. [Configuration](#configuration)
-    - [Required Environment Variables](#required-environment-variables)
-    - [Optional Environment Variable](#optional-environment-variable)
-9. [Contributing](#contributing)
-10. [License](#license)
-
+- [Proxy](#proxy)
+    - [Overview](#overview)
+        - [Key Features](#key-features)
+    - [Event-Driven Agent Choreography](#event-driven-agent-choreography)
+        - [Key Characteristics](#key-characteristics)
+        - [Example Workflow](#example-workflow)
+    - [Communication Models](#communication-models)
+        - [Tool Communication Model](#tool-communication-model)
+        - [Resource Communication Model](#resource-communication-model)
+        - [Common Patterns](#common-patterns)
+        - [Protocol Access Methods](#protocol-access-methods)
+    - [Schema Registry](#schema-registry)
+        - [Key Functions](#key-functions)
+        - [Tools Schema Definition](#tools-schema-definition)
+    - [Configuration Example](#configuration-example)
+        - [Resource Schema Definition](#resource-schema-definition)
+    - [Tools Request/Response Schema Definition](#tools-request/response-schema-definition)
+        - [Request/Response Schema](#request/response-schema)
+        - [Request Schema](#request-schema)
+        - [Response Schema](#response-schema)
+    - [Resource Request/Response Schema Definition](#resource-request/response-schema-definition)
+        - [Resource Types](#resource-types)
+        - [Request Schema Definition](#request-schema-definition)
+        - [Response Schema Structure](#response-schema-structure)
+            - [Common Response Fields](#common-response-fields)
+            - [Text Resource Response Schema](#text-resource-response-schema)
+            - [Blob Resource Response Schema](#blob-resource-response-schema)
+        - [Resource Handling Best Practices](#resource-handling-best-practices)
+    - [Correlation ID for Request/Response Handling](#correlation-id-for-request/response-handling)
+    - [Running the Proxy](#running-the-proxy)
+        - [Prerequisites](#prerequisites)
+        - [Installation](#installation)
+        - [Starting the Proxy](#starting-the-proxy)
+    - [Configuration](#configuration)
+        - [Required Environment Variables](#required-environment-variables)
+        - [Optional Environment Variable](#optional-environment-variable)
+    - [Contributing](#contributing)
+    - [License](#license)
+  
 ## Overview
 
-The **Proxy** is a service that implements the **MCP protocol** and **OpenAPI** to expose Confluent Cloud topics as
-a structured API. It enables seamless communication between tools and services by providing a well-defined interface for
-interacting with Confluent Cloud topics.
+The **Proxy** service is designed to bridge Confluent Cloud topics with structured APIs by implementing the **MCP
+protocol** and **OpenAPI**. It allows seamless and secure communication between tools, resources, and services through a
+well-defined interface.
 
-## Key Features
+### Key Features
 
-- **MCP Protocol Support**: Allows **tool** and **resources** discovery and execution via **stdio or HTTP SSE**.
-- **OpenAPI Integration**: Provides a RESTful interface exposing Confluent Cloud topics in the same way as MCP but via
-  REST.
-- **Schema Registry Support**: Ensures structured data exchange via Confluent's Schema Registry.
-- **Correlation ID for Requests/Responses**: Supports tracking of queries across the system.
-- **REST API with Swagger UI**: Users can interact with the API through a user-friendly Swagger UI available at
-  /swagger-ui/index.html
-- **REST API Tool Endpoints**: Tools are accessible via the endpoint /api/{tool name}.
-- **REST API Resource Endpoints**: Resources are accessible via the endpoint /rcs/{resource uri}.
+- **MCP Protocol Support:** Facilitates tool and resource discovery and execution via **stdio** or **HTTP SSE**.
+- **OpenAPI Integration:** Provides RESTful access to tools and resources with Swagger UI support.
+- **Schema Registry Support:** Ensures consistent data formats through Confluent's Schema Registry.
+- **Correlation ID Tracking:** Supports request tracing across the entire system.
+- **API Endpoints:**
+    - Tools: `/api/{tool name}`
+    - Resources: `/rcs/{resource uri}`
 
-## Registry Schema
+## Event-Driven Agent Choreography
 
-The registry is a specific topic used to register available services. It maintains metadata about services, including
-their request and response topics, correlation identifiers, and descriptions.
+The **Proxy** service enables **event-driven agent choreography** by coordinating multiple autonomous agents through
+event streams in Kafka. Unlike traditional orchestration with a central controller, this model allows agents to make
+independent decisions based on the events they receive.
+
+### Key Characteristics
+
+- **Event Propagation:** Events published to Kafka topics trigger agent actions.
+- **Decentralized Decision-Making:** Agents subscribe to relevant topics and execute tasks autonomously.
+- **Inter-Agent Communication:** Agents communicate indirectly via events, promoting loose coupling.
+- **Dynamic Workflows:** Enables flexible and adaptive workflows without a central orchestrator.
+
+### Example Workflow
+
+1. **Event Publication:** A client request is converted into an event and published to a Kafka topic.
+2. **Agent Reaction:** Agents subscribed to this topic process the event based on their roles.
+3. **Response Propagation:** Processed results are published to response topics, triggering further actions if needed.
+
+## Communication Models
+
+The Proxy service implements two distinct communication patterns for interacting with tools and resources, both
+leveraging Kafka as the underlying message transport system.
+
+### Tool Communication Model
+
+Tools follow a synchronous request-response pattern where:
+
+1. **Client Request**: Client sends a request message to a specific tool via the proxy
+2. **Topic Routing**: Proxy routes the message to the appropriate tool's request topic in Kafka
+3. **Processing**: Tool consumes the message, processes the request, and generates a response
+4. **Response Publication**: Tool publishes the response to its designated response topic
+5. **Delivery**: Proxy consumes the response from the topic and delivers it back to the client
+
+This model supports both:
+
+- **Synchronous operations** via HTTP requests (with appropriate timeouts)
+- **Streaming operations** via HTTP Server-Sent Events (SSE) for long-running tool executions
+
+Key characteristics:
+
+- **Active Processing**: Tools actively perform operations based on the request
+- **Stateful Operations**: Many tool operations involve complex state changes
+- **Correlation Tracking**: Each request-response pair is linked by a correlation ID
+
+### Resource Communication Model
+
+Resources follow a data-oriented retrieve/update pattern:
+
+1. **Resource Request**: Client requests a specific resource via URI
+2. **Topic Lookup**: Proxy determines which resource topic contains the requested resource
+3. **Retrieval**: Proxy retrieves the resource content from the appropriate topic
+4. **Format Conversion**: Proxy formats the resource according to its type (text or blob)
+5. **Delivery**: Proxy returns the formatted resource to the client
+
+Key characteristics:
+
+- **Data-Centric**: Resources represent data objects rather than active operations
+- **URI-Addressable**: Each resource has a unique URI
+- **Type-Specific Handling**: Different handling for text vs. binary resources
+- **MIME Type Integration**: Resources are associated with specific MIME types
+
+### Common Patterns
+
+Both communication models share these common patterns:
+
+1. **Schema Validation**: All messages are validated against their respective schemas in the Schema Registry
+2. **Correlation ID Tracking**: All requests and responses contain correlation IDs for traceability
+3. **Topic-Based Routing**: Kafka topics are used for message distribution
+4. **Registry-Based Discovery**: The registry topic maintains metadata about available tools and resources
+5. **Event-Driven Architecture**: The system follows event-driven principles where messages trigger actions
+
+### Protocol Access Methods
+
+The proxy exposes both tools and resources through multiple protocols:
+
+| Feature                | MCP (stdio/HTTP SSE) | OpenAPI/REST                     | 
+|------------------------|----------------------|----------------------------------|
+| Tool Invocation        | ✓                    | ✓ (via `/api/{tool name}`)       |
+| Resource Retrieval     | ✓                    | ✓ (via `/rcs/{resource uri}`)    |
+| Streaming Responses    | ✓                    | ✓ (via SSE)                      |
+| Synchronous Operations | Limited              | ✓                                |
+| Swagger Documentation  | N/A                  | ✓ (via `/swagger-ui/index.html`) |
+
+## Schema Registry
+
+The **Schema Registry** is a critical component that stores and manages schemas for all messages exchanged between tools
+and resources. It ensures data compatibility and enables seamless communication between different agents.
+
+### Key Functions
+
+- **Schema Validation:** Enforces data format consistency by validating messages against registered schemas.
+- **Version Control:** Maintains different versions of schemas to support forward and backward compatibility.
+- **Centralized Management:** Provides a single source of truth for all schemas used in the system.
 
 ### Tools Schema Definition
 
-- **correlationIdFieldName** (*string*): Specifies the field name in the payload that contains the correlation ID, if
-  applicable. The default value is `correlationId`.
-- **description** (*string*, required): A human-readable description of the service.
-- **name** (*string*, required): The unique name of the service being registered.
-- **requestTopicName** (*string*, required): The Kafka topic where the service listens for requests.
-- **responseTopicName** (*string*, required): The Kafka topic where the service publishes responses.
+This section defines the schema for configuring tools.
+
+| Field Name             | Type   | Required | Default Value | Description                                                                              |
+|------------------------|--------|----------|---------------|------------------------------------------------------------------------------------------|
+| correlationIdFieldName | String |          | correlationId | Specifies the field name in the payload that contains the correlation ID, if applicable. |
+| name                   | String | ✓        |               | A unique identifier for the service being registered.                                    |                                    
+| description            | String | ✓        |               | A clear and concise human-readable description of the service's purpose.                 |
+| requestTopicName       | String | ✓        |               | The Kafka topic on which the service listens for incoming requests.                      |
+| responseTopicName      | string | ✓        |               | The Kafka topic to which the service sends its responses.                                |
 
 ```json
+
 {
   "properties": {
     "correlationIdFieldName": {
@@ -90,38 +197,37 @@ their request and response topics, correlation identifiers, and descriptions.
 }
 ```
 
-The registry schema is essential for managing tool discovery and execution within MCP. The schema is stored in
-Confluent's Schema Registry and follows a structured format to ensure consistency across different tools and services.
+## Configuration Example
 
-## Request/Response Schema
+Here is an example configuration for a service using the above schema:
 
-The proxy follows a **schema-first approach**, meaning it relies on Confluent's **Schema Registry** to validate request
-and response messages before exposing them through MCP and OpenAPI. Currently, JSON schemas are used for defining and
-enforcing data structures.
+```json
 
-### Request Schema
-
-Each request follows a structured schema stored in the Schema Registry. A valid request includes a **correlation ID**
-for
-tracking and a **payload** containing the requested operation.
-
-### Response Schema
-
-Responses must also conform to a registered schema, ensuring consistency and validation. The **correlation ID** must
-match the request for proper tracking.
+{
+  "name": "order-processing-service",
+  "description": "Handles order processing and inventory updates",
+  "requestTopicName": "orders.requests",
+  "responseTopicName": "orders.responses",
+  "correlationIdFieldName": "correlationId"
+}
+```
 
 ### Resource Schema Definition
 
-- **correlationIdFieldName** (*string*): Specifies the field name in the payload that contains the correlation ID, if
-  applicable. The default value is `correlationId`.
-- **description** (*string*, required): A human-readable description of the resource.
-- **name** (*string*, required): The unique name of the resource being registered.
-- **requestTopicName** (*string*, required): The Kafka topic where the resource listens for requests.
-- **responseTopicName** (*string*, required): The Kafka topic where the resource publishes responses.
-- **mimeType** (*string*, required): The MIME type of the resource.
-- **url** (*string*, required): The URL of the resource.
+This section defines the schema for configuring resources.
+
+| Field Name             | Type   | Required | Default Value | Description                                                                              |
+|------------------------|--------|----------|---------------|------------------------------------------------------------------------------------------|
+| correlationIdFieldName | String |          | correlationId | Specifies the field name in the payload that contains the correlation ID, if applicable. |
+| name                   | String | ✓        |               | A unique identifier for the service being registered.                                    |                                    
+| description            | String | ✓        |               | A clear and concise human-readable description of the service's purpose.                 |
+| requestTopicName       | String | ✓        |               | The Kafka topic on which the service listens for incoming requests.                      |
+| responseTopicName      | string | ✓        |               | The Kafka topic to which the service sends its responses.                                |
+| mimeType               | string | ✓        |               | The MIME type of the resource.                                                           |
+| url                    | string | ✓        |               | The URL of the resource.                                                                 |
 
 ```json
+
 {
   "properties": {
     "registrationType": {
@@ -197,18 +303,43 @@ Confluent's Schema Registry and follows a structured format to ensure consistenc
 services.
 Resources can contain either text or binary data.
 
-## Request/Response Schema
+## Tools Request/Response Schema Definition
+
+### Request/Response Schema
 
 The proxy follows a **schema-first approach**, meaning it relies on Confluent's **Schema Registry** to validate request
 and response messages before exposing them through MCP and OpenAPI. Currently, JSON schemas are used for defining and
 enforcing data structures.
 
+### Request Schema
+
+Each request follows a structured schema stored in the Schema Registry. A valid request includes a **correlation ID**
+for
+tracking and a **payload** containing the requested operation.
+
+### Response Schema
+
+Responses must also conform to a registered schema, ensuring consistency and validation. The **correlation ID** must
+match the request for proper tracking.
+
+## Resource Request/Response Schema Definition
+
+Resources can contain either text or binary data. The proxy handles both types through a structured schema approach
+stored in Confluent's Schema Registry.
+
+### Resource Types
+
+Resources are classified into two main types:
+
+- **Text Resources**: Used for retrieving text-based content (JSON, XML, Markdown, etc.)
+- **Blob Resources**: Used for binary data (images, PDFs, executables, etc.)
+
 ### Request Schema Definition
 
-Text and blob resource are supported. The schema is stored in the Schema Registry and follows a structured format to
-ensure consistency across different resources types.
+Resource requests follow a simple URI-based schema. The client needs to specify which resource they want to access:
 
 ```json
+
 {
   "properties": {
     "uri": {
@@ -224,13 +355,26 @@ ensure consistency across different resources types.
 }
 ```
 
-### Response Schemas Definition
+Key components:
+
+- **uri** (*string*, required): The unique identifier for the resource being requested
+
+### Response Schema Structure
+
+Responses for resources follow a consistent pattern with type-specific variations:
+
+#### Common Response Fields
+
+- **type** (*string*, required): Indicates whether the resource is "text" or "blob"
+- **uri** (*string*, required): The resource identifier that matches the request
+- **mimeType** (*string*, required): The MIME type of the resource (e.g., "application/json", "image/png")
 
 #### Text Resource Response Schema
 
-Text resource response schema contains a `text` field that can be `null` or a `string`.
+Text resource responses include the actual text content in the `text` field:
 
 ```json
+
 {
   "properties": {
     "type": {
@@ -272,13 +416,14 @@ Text resource response schema contains a `text` field that can be `null` or a `s
 }
 ```
 
+Note that the `text` field can be null, which allows for resource existence checks without retrieving content.
+
 #### Blob Resource Response Schema
 
-Blob resource response schema is similar to text resource response schema, but it contains a `blob` field instead of a
-`text` field.
-Blobs are base64 encoded binary data.
+Blob resource responses contain base64-encoded binary data in the `blob` field:
 
 ```json
+
 {
   "properties": {
     "type": {
@@ -319,6 +464,14 @@ Blobs are base64 encoded binary data.
   "type": "object"
 }
 ```
+
+### Resource Handling Best Practices
+
+When working with resources through the proxy:
+
+1. **Use appropriate MIME types**: Always specify the correct MIME type for resources to ensure proper handling by
+   clients
+2. **URI conventions**: Follow a consistent naming convention for resource URIs (e.g., hierarchical paths)
 
 ## Correlation ID for Request/Response Handling
 
@@ -364,20 +517,22 @@ The proxy requires specific environment variables for correct operation:
 
 ### Required Environment Variables
 
-- `BROKER_URL` - Confluent Cloud broker URL
-- `JAAS_USERNAME` - Authentication username
-- `JAAS_PASSWORD` - Authentication password
-- `SR_URL` - Schema Registry URL
-- `SR_API_KEY` - Schema Registry API key
-- `SR_API_SECRET` - Schema Registry API secret
+- `BROKER_URL`   - Confluent Cloud broker URL
+- `JAAS_USERNAME`   - Authentication username
+- `JAAS_PASSWORD`   - Authentication password
+- `SR_URL`   - Schema Registry URL
+- `SR_API_KEY`   - Schema Registry API key
+- `SR_API_SECRET`   - Schema Registry API secret
 
 ### Optional Environment Variable
 
-- `REGISTRY_TOPIC` - The topic for MCP registry (default: `_agent_registry`)
+- `REGISTRY_TOPIC`   - The topic for MCP registry (default: `_agent_registry`)
 
 ## Contributing
 
 Contributions are welcome! Feel free to open issues and submit pull requests.
 
 ## [License](../LICENSE)
+
+
 
