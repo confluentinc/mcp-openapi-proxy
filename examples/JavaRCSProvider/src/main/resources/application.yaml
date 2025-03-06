@@ -7,7 +7,7 @@ spring:
   main:
     web-application-type: none
 kafka:
-  application-id: "mcp.proxy"
+  application-id: "rcs_provider"
   broker-servers: ${BROKER_URL}
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
   sr-url: ${SR_URL}
