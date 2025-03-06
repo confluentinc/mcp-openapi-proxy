@@ -25,67 +25,85 @@ import java.util.Map;
 @Slf4j
 public class RegistrationService<K extends Schemas.RegistrationKey, R extends Schemas.Registration> {
 
-    private final KafkaConfigration kafkaConfigration;
+    private final KafkaConfiguration kafkaConfiguration;
     private final Class<K> registrationKeyClass;
     private final Class<R> registrationClass;
-    private final String registrationTopic;
     private final boolean readOnly;
     private final RegistrationServiceHandler.Handler<K, R> handler;
-    private final String appId;
     private KafkaCache<K, R> registrationCache;
 
     /**
      * Constructor for RegistrationService with a handler.
      *
-     * @param appId                the application ID
-     * @param kafkaConfigration    the Kafka configuration
+     * @param kafkaConfiguration   the Kafka configuration
      * @param registrationKeyClass the class type of the registration key
      * @param registrationClass    the class type of the registration
-     * @param registrationTopic    the registration topic name
      * @param readOnly             whether the service is read-only
      * @param handler              the handler for processing registration updates
      */
-    public RegistrationService(String appId,
-                               KafkaConfigration kafkaConfigration,
+    public RegistrationService(KafkaConfiguration kafkaConfiguration,
                                Class<K> registrationKeyClass,
                                Class<R> registrationClass,
-                               String registrationTopic,
                                boolean readOnly,
                                RegistrationServiceHandler.Handler<K, R> handler) {
-        this.kafkaConfigration = kafkaConfigration;
+        this.kafkaConfiguration = kafkaConfiguration;
         this.registrationKeyClass = registrationKeyClass;
         this.registrationClass = registrationClass;
-        this.registrationTopic = registrationTopic;
         this.readOnly = readOnly;
         this.handler = handler;
-        this.appId = appId;
+    }
+
+    /**
+     * Constructor for RegistrationService with a handler.
+     *
+     * @param kafkaConfiguration   the Kafka configuration
+     * @param registrationKeyClass the class type of the registration key
+     * @param registrationClass    the class type of the registration
+     * @param handler              the handler for processing registration updates
+     */
+    public RegistrationService(KafkaConfiguration kafkaConfiguration,
+                               Class<K> registrationKeyClass,
+                               Class<R> registrationClass,
+                               RegistrationServiceHandler.Handler<K, R> handler) {
+        this(kafkaConfiguration, registrationKeyClass, registrationClass, false, handler);
+    }
+
+
+    /**
+     * Constructor for RegistrationService without a handler.
+     *
+     * @param kafkaConfiguration   the Kafka configuration
+     * @param registrationKeyClass the class type of the registration key
+     * @param registrationClass    the class type of the registration
+     * @param readOnly             whether the service is read-only
+     */
+    public RegistrationService(KafkaConfiguration kafkaConfiguration,
+                               Class<K> registrationKeyClass,
+                               Class<R> registrationClass,
+                               boolean readOnly) {
+        this(kafkaConfiguration, registrationKeyClass, registrationClass, readOnly, null);
     }
 
     /**
      * Constructor for RegistrationService without a handler.
      *
-     * @param appId                the application ID
-     * @param kafkaConfigration    the Kafka configuration
+     * @param kafkaConfiguration   the Kafka configuration
      * @param registrationKeyClass the class type of the registration key
      * @param registrationClass    the class type of the registration
-     * @param registrationTopic    the registration topic name
-     * @param readOnly             whether the service is read-only
      */
-    public RegistrationService(String appId,
-                               KafkaConfigration kafkaConfigration,
+    public RegistrationService(KafkaConfiguration kafkaConfiguration,
                                Class<K> registrationKeyClass,
-                               Class<R> registrationClass,
-                               String registrationTopic,
-                               boolean readOnly) {
-        this(appId, kafkaConfigration, registrationKeyClass, registrationClass, registrationTopic, readOnly, null);
+                               Class<R> registrationClass) {
+        this(kafkaConfiguration, registrationKeyClass, registrationClass, false, null);
     }
+
 
     /**
      * Initialize the registration service.
      * Configures the Kafka serializers and deserializers, and initializes the Kafka cache.
      */
     public void start() {
-        final Map<String, Object> srConfig = kafkaConfigration.getSchemaRegistryConfig();
+        final Map<String, Object> srConfig = KafkaPropertiesFactory.getSchemaRegistryConfig(kafkaConfiguration);
         srConfig.put(KafkaJsonSchemaDeserializerConfig.JSON_KEY_TYPE, registrationKeyClass);
         srConfig.put(KafkaJsonSchemaDeserializerConfig.JSON_VALUE_TYPE, registrationClass);
 
@@ -106,7 +124,7 @@ public class RegistrationService<K extends Schemas.RegistrationKey, R extends Sc
                 : null;
 
         registrationCache = new KafkaCache<>(
-                kafkaConfigration.getCacheConfig(appId, registrationTopic, readOnly),
+                KafkaPropertiesFactory.getCacheConfig(kafkaConfiguration, readOnly),
                 keySerdes,
                 valueSerdes,
                 serviceHandler,
@@ -116,12 +134,15 @@ public class RegistrationService<K extends Schemas.RegistrationKey, R extends Sc
         registrationCache.init();
 
         if (serviceHandler != null && serviceHandler.isShouldCreateSchemas()) {
-            try (final SchemaRegistryClient schemaRegistryClient = SchemaUtils.getSchemaRegistryClient(kafkaConfigration)) {
+            final String registrationTopic = kafkaConfiguration.registrationTopicName();
+
+            try (SchemaRegistryClient schemaRegistryClient = KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfiguration)) {
                 SchemaUtils.registerSchemaIfMissing(registrationTopic, registrationKeyClass, true, schemaRegistryClient);
                 SchemaUtils.registerSchemaIfMissing(registrationTopic, registrationClass, false, schemaRegistryClient);
-            } catch (IOException e) {
-                log.error("Error creating schemas", e);
+            } catch (Throwable e) {
+                log.error("Error registering schemas", e);
             }
+
         }
     }
 

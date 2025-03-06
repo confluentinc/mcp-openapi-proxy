@@ -1,9 +1,9 @@
 package io.confluent.pas.mcp.proxy.registration;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.ProducerService;
 import io.confluent.pas.mcp.common.services.Schemas;
-import io.confluent.pas.mcp.proxy.registration.internal.KafkaConfigurationImpl;
 import io.confluent.pas.mcp.proxy.registration.internal.KafkaResponseHandler;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import lombok.extern.slf4j.Slf4j;
@@ -25,9 +25,9 @@ public class RequestResponseHandler {
     private final ProducerService<JsonNode, JsonNode> producerService;
     private final KafkaResponseHandler kafkaResponseHandler;
 
-    public RequestResponseHandler(@Autowired KafkaConfigurationImpl kafkaConfigration) {
-        this.kafkaResponseHandler = new KafkaResponseHandler("mcp-proxy-response", kafkaConfigration);
-        this.producerService = new ProducerService<>("mcp-proxy-request", kafkaConfigration);
+    public RequestResponseHandler(@Autowired KafkaConfiguration kafkaConfiguration) {
+        this.kafkaResponseHandler = new KafkaResponseHandler(kafkaConfiguration);
+        this.producerService = new ProducerService<>(kafkaConfiguration);
     }
 
     /**

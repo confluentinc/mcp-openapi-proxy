@@ -1,7 +1,7 @@
 package io.confluent.pas.mcp.proxy.registration.internal;
 
 import io.confluent.pas.mcp.common.services.ConsumerService;
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.common.utils.AutoReadWriteLock;
 import jakarta.annotation.PreDestroy;
@@ -44,10 +44,9 @@ public class KafkaResponseHandler {
 
     private final ConsumerService<ResponseKey, Response> consumerService;
 
-    public KafkaResponseHandler(String applicationId, KafkaConfigration kafkaConfigration) {
+    public KafkaResponseHandler(KafkaConfiguration kafkaConfiguration) {
         this.consumerService = new ConsumerService<>(
-                applicationId,
-                kafkaConfigration,
+                kafkaConfiguration,
                 ResponseKey.class,
                 Response.class);
     }

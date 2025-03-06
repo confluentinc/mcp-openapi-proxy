@@ -16,8 +16,7 @@ import reactor.core.publisher.Mono;
 @AllArgsConstructor
 public class ProducerService<K, V> {
 
-    private final String applicationId;
-    private final KafkaConfigration kafkaConfigration;
+    private final KafkaConfiguration kafkaConfiguration;
     private final Lazy<KafkaProducer<K, V>> producer = new Lazy<>(this::createNewProducer);
 
     /**
@@ -49,6 +48,6 @@ public class ProducerService<K, V> {
      * @return the KafkaProducer
      */
     private KafkaProducer<K, V> createNewProducer() {
-        return new KafkaProducer<>(kafkaConfigration.getProducerProperties(applicationId));
+        return new KafkaProducer<>(KafkaPropertiesFactory.getProducerProperties(kafkaConfiguration));
     }
 }

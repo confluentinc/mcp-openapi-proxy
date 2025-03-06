@@ -1,7 +1,8 @@
 package io.confluent.pas.mcp.proxy.registration;
 
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
+import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
 import io.confluent.pas.mcp.common.services.RegistrationService;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.handlers.ResourceHandler;
@@ -11,7 +12,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -33,23 +33,17 @@ public class RegistrationCoordinator {
     private final RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService;
 
     @Autowired
-    public RegistrationCoordinator(KafkaConfigration kafkaConfigration,
+    public RegistrationCoordinator(KafkaConfiguration kafkaConfiguration,
                                    RequestResponseHandler requestResponseHandler,
-                                   McpAsyncServer mcpServer,
-                                   SchemaRegistryClient schemaRegistryClient,
-                                   @Value("${registration.topic}") String registrationTopic) {
+                                   McpAsyncServer mcpServer) {
         this.requestResponseHandler = requestResponseHandler;
         this.mcpServer = mcpServer;
-        this.schemaRegistryClient = schemaRegistryClient;
+        this.schemaRegistryClient = KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfiguration);
         this.registrationService = new RegistrationService<>(
-                "mcp-proxy-registration",
-                kafkaConfigration,
+                kafkaConfiguration,
                 Schemas.RegistrationKey.class,
                 Schemas.Registration.class,
-                registrationTopic,
-                false,
-                this::handleRegistration
-        );
+                this::handleRegistration);
     }
 
     /**

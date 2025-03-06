@@ -1,11 +1,12 @@
 package io.confluent.pas.mcp.proxy.frameworks.java.kafka;
 
-import com.github.victools.jsonschema.generator.*;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
+import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
+import io.confluent.pas.mcp.common.services.TopicConfiguration;
 import io.confluent.pas.mcp.common.utils.Lazy;
 import io.confluent.pas.mcp.common.utils.SchemaUtils;
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.config.TopicConfig;
@@ -20,17 +21,18 @@ import java.util.concurrent.TimeoutException;
 
 
 @Slf4j
-@AllArgsConstructor
 public class TopicManagement {
 
     private final Lazy<AdminClient> kafkaAdminClient = new Lazy<>(this::getNewKafkaAdminClient);
-    private final Lazy<SchemaGenerator> schemaGenerator = new Lazy<>(() -> new SchemaGenerator(new SchemaGeneratorConfigBuilder(
-            SchemaVersion.DRAFT_7,
-            OptionPreset.PLAIN_JSON).build()));
-    private final TopicConfiguration topicConfiguration;
-    private final KafkaAdminClientConfig kafkaConfigration;
+    private final KafkaConfiguration kafkaConfigration;
     private final SchemaRegistryClient schemaRegistryClient;
+    private final TopicConfiguration topicConfiguration;
 
+    public TopicManagement(KafkaConfiguration kafkaConfigration) {
+        this.kafkaConfigration = kafkaConfigration;
+        this.schemaRegistryClient = KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfigration);
+        this.topicConfiguration = kafkaConfigration.topicConfiguration();
+    }
 
     /**
      * Create a topic with a schema
@@ -68,9 +70,8 @@ public class TopicManagement {
      * @throws InterruptedException     If the thread is interrupted
      * @throws ExecutionException       If the topic creation fails
      * @throws TimeoutException         If the topic creation times out
-     *                                  return true if the topic was created, false if it already exists
      */
-    private boolean createTopic(String topic)
+    private void createTopic(String topic)
             throws TopicManagementException, InterruptedException, ExecutionException, TimeoutException {
         final AdminClient admin = kafkaAdminClient.get();
 
@@ -105,16 +106,14 @@ public class TopicManagement {
         } catch (ExecutionException e) {
             if (e.getCause() instanceof TopicExistsException) {
                 log.info("Topic {} already exists", topic);
-                return false;
             } else {
                 throw e;
             }
         }
 
-        return true;
     }
 
     private AdminClient getNewKafkaAdminClient() {
-        return KafkaAdminClient.create(kafkaConfigration.getProperties());
+        return KafkaAdminClient.create(KafkaPropertiesFactory.getAdminConfig(kafkaConfigration));
     }
 }

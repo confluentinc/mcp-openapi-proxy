@@ -1,6 +1,6 @@
 package io.confluent.pas.mcp.proxy.security;
 
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -31,14 +31,14 @@ public class AuthManagerConfiguration {
      * Configures the security filter chain for the server.
      * This method sets up basic authentication and disables CSRF protection.
      *
-     * @param http                 the ServerHttpSecurity instance
-     * @param schemaRegistryConfig the SchemaRegistry configuration
+     * @param http               the ServerHttpSecurity instance
+     * @param kafkaConfiguration the kafka configuration
      * @return the configured SecurityWebFilterChain
      */
     @Bean
     @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "sse")
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
-                                                            KafkaConfigration.SR schemaRegistryConfig) {
+                                                            KafkaConfiguration kafkaConfiguration) {
         if (!authenticationEnabled) {
             return http.authorizeExchange((exchanges) -> exchanges.anyExchange().permitAll())
                     .csrf(ServerHttpSecurity.CsrfSpec::disable)
@@ -50,12 +50,12 @@ public class AuthManagerConfiguration {
         return http.authorizeExchange((exchanges) -> exchanges.anyExchange().authenticated())
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .httpBasic((httpBasicSpec) -> {
-                    httpBasicSpec.authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry));
+                    httpBasicSpec.authenticationManager(new AuthManager(kafkaConfiguration, cacheSize, cacheExpiry));
                 })
                 .formLogin((httpBasicSpec) -> {
-                    httpBasicSpec.authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry));
+                    httpBasicSpec.authenticationManager(new AuthManager(kafkaConfiguration, cacheSize, cacheExpiry));
                 })
-                .authenticationManager(new AuthManager(schemaRegistryConfig, cacheSize, cacheExpiry))
+                .authenticationManager(new AuthManager(kafkaConfiguration, cacheSize, cacheExpiry))
                 .build();
     }
 }

@@ -1,6 +1,10 @@
 package io.confluent.pas.mcp.proxy.frameworks.java;
 
-import io.confluent.pas.mcp.common.services.*;
+import io.confluent.pas.mcp.common.services.ConsumerService;
+import io.confluent.pas.mcp.common.services.ProducerService;
+import io.confluent.pas.mcp.common.services.RegistrationService;
+import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.proxy.frameworks.java.kafka.TopicManagement;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import lombok.extern.slf4j.Slf4j;
@@ -39,39 +43,27 @@ public class SubscriptionHandler<K extends Key, REQ, RES> {
     /**
      * Constructor for SubscriptionHandler.
      *
-     * @param applicationId     The application ID
-     * @param topicManagement   The topic management service
      * @param kafkaConfigration The Kafka configuration
-     * @param registrationTopic The registration topic name
      * @param keyClass          The class type of the key
      * @param requestClass      The class type of the request
      * @param responseClass     The class type of the response
      */
-    public SubscriptionHandler(String applicationId,
-                               TopicManagement topicManagement,
-                               KafkaConfigration kafkaConfigration,
-                               String registrationTopic,
+    public SubscriptionHandler(KafkaConfiguration kafkaConfigration,
                                Class<K> keyClass,
                                Class<REQ> requestClass,
                                Class<RES> responseClass) {
-        this.topicManagement = topicManagement;
-        this.responseService = new ProducerService<>(
-                applicationId,
-                kafkaConfigration);
+        this.topicManagement = new TopicManagement(kafkaConfigration);
+        this.responseService = new ProducerService<>(kafkaConfigration);
 
         this.requestService = new ConsumerService<>(
-                applicationId,
                 kafkaConfigration,
                 keyClass,
                 requestClass);
 
         this.registrationService = new RegistrationService<>(
-                applicationId,
                 kafkaConfigration,
                 Schemas.RegistrationKey.class,
-                Schemas.Registration.class,
-                registrationTopic,
-                false);
+                Schemas.Registration.class);
 
         this.keyClass = keyClass;
         this.requestClass = requestClass;
@@ -99,7 +91,8 @@ public class SubscriptionHandler<K extends Key, REQ, RES> {
      * @param handler      RequestHandler to handle the request
      * @throws SubscriptionException if there is an error during subscription
      */
-    public void subscribeWith(Schemas.Registration registration, RequestHandler<K, REQ, RES> handler) throws SubscriptionException {
+    public void subscribeWith(Schemas.Registration registration,
+                              RequestHandler<K, REQ, RES> handler) throws SubscriptionException {
         log.info("Subscribing for registration: {}", registration.getName());
 
         // First we create the topic for the request/response

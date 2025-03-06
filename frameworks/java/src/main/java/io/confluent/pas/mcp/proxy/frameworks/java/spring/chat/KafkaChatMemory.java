@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.serializers.KafkaJsonDeserializer;
 import io.confluent.kafka.serializers.KafkaJsonSerializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializerConfig;
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
+import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
 import io.kcache.KafkaCache;
 import io.kcache.KafkaCacheConfig;
 import lombok.Getter;
@@ -86,8 +87,8 @@ public class KafkaChatMemory implements ChatMemory {
         this.memoryKafkaCache = initializeKafkaCache(kcacheProperties, keySerdes, valueSerdes);
     }
 
-    public KafkaChatMemory(final String memoryId, final KafkaConfigration configration) {
-        this(memoryId, configration.getProperties("")
+    public KafkaChatMemory(final String memoryId, final KafkaConfiguration configration) {
+        this(memoryId, KafkaPropertiesFactory.getProducerProperties(configration)
                 .entrySet()
                 .stream()
                 .map(enty -> Map.entry(enty.getKey().toString(), enty.getValue()))

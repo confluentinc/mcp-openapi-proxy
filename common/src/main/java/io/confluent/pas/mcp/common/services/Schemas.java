@@ -86,6 +86,7 @@ public class Schemas {
     @JsonSubTypes({
             @JsonSubTypes.Type(value = ResourceRegistration.class, name = Registration.RESOURCE),
             @JsonSubTypes.Type(value = Registration.class, name = Registration.TOOL)})
+    @Builder
     public static class Registration {
         public final static String TOOL = "tool";
         public final static String RESOURCE = "resource";

@@ -7,20 +7,15 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.annotations.Schema;
-import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientFactory;
 import io.confluent.kafka.schemaregistry.client.rest.entities.SchemaReference;
 import io.confluent.kafka.schemaregistry.client.rest.entities.requests.RegisterSchemaResponse;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
-import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,16 +28,6 @@ public class SchemaUtils {
     private final static Lazy<SchemaGenerator> SCHEMA_GENERATOR = new Lazy<>(() -> new SchemaGenerator(new SchemaGeneratorConfigBuilder(
             SchemaVersion.DRAFT_7,
             OptionPreset.PLAIN_JSON).build()));
-
-    public static SchemaRegistryClient getSchemaRegistryClient(KafkaConfigration kafkaConfigration) {
-        return SchemaRegistryClientFactory.newClient(
-                List.of(kafkaConfigration.getSchemaRegistry().url),
-                100,
-                List.of(new JsonSchemaProvider(), new AvroSchemaProvider()),
-                kafkaConfigration.getSchemaRegistryConfig(),
-                new HashMap<>()
-        );
-    }
 
     public static void registerSchemaIfMissing(String topicName,
                                                Class<?> clazz,

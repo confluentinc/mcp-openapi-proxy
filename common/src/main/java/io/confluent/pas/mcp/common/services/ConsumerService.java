@@ -4,11 +4,8 @@ import io.confluent.pas.mcp.common.utils.AutoReadWriteLock;
 import io.confluent.pas.mcp.common.utils.Lazy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
 
 import java.time.Duration;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,8 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 public class ConsumerService<K, V> {
 
-    private final KafkaConfigration kafkaConfigration;
-    private final String applicationId;
+    private final KafkaConfiguration kafkaConfiguration;
     private final Class<K> keyClass;
     private final Class<V> requestClass;
 
@@ -40,17 +36,14 @@ public class ConsumerService<K, V> {
     /**
      * Constructor for ConsumerService.
      *
-     * @param applicationId     The application ID
-     * @param kafkaConfigration The Kafka configuration
-     * @param keyClass          The class type of the key
-     * @param requestClass      The class type of the request
+     * @param kafkaConfiguration The Kafka configuration
+     * @param keyClass           The class type of the key
+     * @param requestClass       The class type of the request
      */
-    public ConsumerService(String applicationId,
-                           KafkaConfigration kafkaConfigration,
+    public ConsumerService(KafkaConfiguration kafkaConfiguration,
                            Class<K> keyClass,
                            Class<V> requestClass) {
-        this.kafkaConfigration = kafkaConfigration;
-        this.applicationId = applicationId;
+        this.kafkaConfiguration = kafkaConfiguration;
         this.keyClass = keyClass;
         this.requestClass = requestClass;
 
@@ -191,12 +184,10 @@ public class ConsumerService<K, V> {
      * @return the KafkaConsumer
      */
     private KafkaConsumer<K, V> getNewConsumer() {
-        final Properties props = kafkaConfigration.getConsumerProperties(
-                applicationId,
+        return new KafkaConsumer<>(KafkaPropertiesFactory.getConsumerProperties(
+                kafkaConfiguration,
                 false,
                 keyClass,
-                requestClass);
-
-        return new KafkaConsumer<>(props);
+                requestClass));
     }
 }

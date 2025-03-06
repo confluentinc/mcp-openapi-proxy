@@ -30,8 +30,8 @@ public class Request<K, REQ, RES> {
     public Mono<Void> respond(Response<K, RES> response) {
         return responseService.send(
                 registration.getResponseTopicName(),
-                response.getKey(),
-                response.getResponse());
+                response.key(),
+                response.response());
     }
 
     /**
