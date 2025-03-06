@@ -3,24 +3,70 @@ package io.confluent.pas.mcp.proxy.registration.schemas;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.common.utils.Lazy;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 
-@Getter
+@Slf4j
 public class RegistrationSchemas {
 
-    private final RegistrationSchema requestKeySchema;
-    private final RegistrationSchema requestSchema;
-    private final RegistrationSchema responseKeySchema;
-    private final RegistrationSchema responseSchema;
+    private final Lazy<RegistrationSchema> requestKeySchema;
+    private final Lazy<RegistrationSchema> requestSchema;
+    private final Lazy<RegistrationSchema> responseKeySchema;
+    private final Lazy<RegistrationSchema> responseSchema;
+
+    public RegistrationSchema getRequestKeySchema() {
+        return requestKeySchema.get();
+    }
+
+    public RegistrationSchema getRequestSchema() {
+        return requestSchema.get();
+    }
+
+    public RegistrationSchema getResponseKeySchema() {
+        return responseKeySchema.get();
+    }
+
+    public RegistrationSchema getResponseSchema() {
+        return responseSchema.get();
+    }
 
     public RegistrationSchemas(SchemaRegistryClient client,
                                Schemas.Registration registration) throws IOException, RestClientException {
-        this.requestKeySchema = getSchema(registration.getRequestTopicName(), true, client);
-        this.requestSchema = getSchema(registration.getRequestTopicName(), false, client);
-        this.responseKeySchema = getSchema(registration.getResponseTopicName(), true, client);
-        this.responseSchema = getSchema(registration.getResponseTopicName(), false, client);
+        this.requestKeySchema = new Lazy<>(() -> {
+            try {
+                return getSchema(registration.getRequestTopicName(), true, client);
+            } catch (RestClientException | IOException e) {
+                log.error("Failed to get request key schema", e);
+                throw new RuntimeException(e);
+            }
+        });
+        this.requestSchema = new Lazy<>(() -> {
+            try {
+                return getSchema(registration.getRequestTopicName(), false, client);
+            } catch (RestClientException | IOException e) {
+                log.error("Failed to get request schema", e);
+                throw new RuntimeException(e);
+            }
+        });
+        this.responseKeySchema = new Lazy<>(() -> {
+            try {
+                return getSchema(registration.getResponseTopicName(), true, client);
+            } catch (RestClientException | IOException e) {
+                log.error("Failed to get response key schema", e);
+                throw new RuntimeException(e);
+            }
+        });
+        this.responseSchema = new Lazy<>(() -> {
+            try {
+                return getSchema(registration.getResponseTopicName(), false, client);
+            } catch (RestClientException | IOException e) {
+                log.error("Failed to get response schema", e);
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     /**

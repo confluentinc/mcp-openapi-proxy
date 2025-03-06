@@ -48,10 +48,7 @@ public class TopicManagement {
     public <K, V> void createTopic(String topicName, Class<K> keyClass, Class<V> valueClass)
             throws TopicManagementException, ExecutionException, InterruptedException, TimeoutException {
         // First create the topic
-        if (!createTopic(topicName)) {
-            // Topic already exists, then return
-            return;
-        }
+        createTopic(topicName);
 
         // Then register the schemas
         try {

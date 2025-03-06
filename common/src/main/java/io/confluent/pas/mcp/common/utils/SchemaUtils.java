@@ -5,6 +5,7 @@ import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
+import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.annotations.Schema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
@@ -106,6 +107,12 @@ public class SchemaUtils {
         // Then register the schema
         try {
             final String subject = topicName + (forKey ? "-key" : "-value");
+            final List<ParsedSchema> parsedSchemas = schemaRegistryClient.getSchemas(subject, false, true);
+            if (!parsedSchemas.isEmpty()) {
+                log.info("Schema already registered for subject {}", subject);
+                return;
+            }
+
             RegisterSchemaResponse response = schemaRegistryClient.registerWithResponse(
                     subject,
                     jsonSchema,

@@ -1,11 +1,8 @@
-package io.confluent.pas.mcp.proxy.frameworks.java.mcp;
+package io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp;
 
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.modelcontextprotocol.client.McpAsyncClient;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.ai.mcp.AsyncMcpToolCallback;
 import org.springframework.ai.tool.ToolCallback;

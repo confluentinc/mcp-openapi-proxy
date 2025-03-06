@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.java.mcp;
+package io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp;
 
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.modelcontextprotocol.spec.McpSchema;
