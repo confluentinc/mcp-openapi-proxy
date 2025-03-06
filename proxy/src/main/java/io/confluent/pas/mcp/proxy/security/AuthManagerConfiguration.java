@@ -36,7 +36,7 @@ public class AuthManagerConfiguration {
      * @return the configured SecurityWebFilterChain
      */
     @Bean
-    @ConditionalOnProperty(prefix = "transport", name = "mode", havingValue = "sse")
+    @ConditionalOnProperty(prefix = "mcp.server", name = "mode", havingValue = "sse")
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
                                                             KafkaConfiguration kafkaConfiguration) {
         if (!authenticationEnabled) {

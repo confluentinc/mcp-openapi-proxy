@@ -13,14 +13,13 @@ mcp:
   server:
     name: "Confluent MCP Proxy"
     version: 1.0.0
+    mode: "sse"
 kafka:
   application-id: "mcp.proxy"
   broker-servers: ${BROKER_URL}
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
-transport:
-  mode: "sse"
 authentication:
   cache-size: 100
   cache-expiry-in-second: 300
@@ -41,14 +40,13 @@ mcp:
   server:
     name: "Confluent MCP Proxy"
     version: 1.0.0
+    mode: "sse"
 kafka:
   application-id: "mcp.proxy"
   broker-servers: ${BROKER_URL}
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
-transport:
-  mode: "sse"
 authentication:
   cache-size: 100
   cache-expiry-in-second: 300
@@ -67,14 +65,13 @@ mcp:
   server:
     name: "Confluent MCP Proxy"
     version: 1.0.0
+    mode: "stdio"
 kafka:
   application-id: "mcp.proxy"
   broker-servers: ${BROKER_URL}
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
-transport:
-  mode: "stdio"
 logging:
   file:
     name: "./logs/mcp-proxy.log"

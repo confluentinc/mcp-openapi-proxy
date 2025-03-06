@@ -26,7 +26,6 @@ import java.util.Map;
 @Slf4j
 public class AuthManager implements ReactiveAuthenticationManager {
 
-    private static final String SCHEMA_REGISTRY_URL = "schema.registry.url";
     private static final String BASIC_AUTH_CREDENTIALS_SOURCE = "basic.auth.credentials.source";
     private static final String USER_INFO = "USER_INFO";
     private static final String SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO = "schema.registry.basic.auth.user.info";

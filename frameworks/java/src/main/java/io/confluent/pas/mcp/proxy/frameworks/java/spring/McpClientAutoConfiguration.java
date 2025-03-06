@@ -1,0 +1,94 @@
+package io.confluent.pas.mcp.proxy.frameworks.java.spring;
+
+import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.ResourcesChangeEvent;
+import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.ToolsChangeEvent;
+import io.modelcontextprotocol.client.McpAsyncClient;
+import io.modelcontextprotocol.client.McpClient;
+import io.modelcontextprotocol.client.transport.ServerParameters;
+import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.client.transport.WebFluxSseClientTransport;
+import io.modelcontextprotocol.spec.ClientMcpTransport;
+import io.modelcontextprotocol.spec.McpSchema;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunctions;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Slf4j
+@AutoConfiguration
+@ConditionalOnProperty(prefix = "mcp.client", name = "connection-string")
+public class McpClientAutoConfiguration {
+
+    @Value("#{'${mcp.client.connection-string}'.split(',')}")
+    private List<String> connectionString;
+
+    @Value("${mcp.client.timeout:60}")
+    private int timeout;
+
+    @Value("${mcp.client.api.key:#{null}}")
+    private String apiKey;
+
+    @Value("${mcp.client.api.secret:#{null}}")
+    private String apiSecret;
+
+    @Bean
+    @ConditionalOnProperty(prefix = "mcp.client", name = "mode", havingValue = "sse")
+    public ClientMcpTransport sseServerTransport() {
+        final WebClient.Builder webClientBuilder = (StringUtils.isNotEmpty(apiKey) && StringUtils.isNotEmpty(apiSecret))
+                ? WebClient.builder().filter(ExchangeFilterFunctions.basicAuthentication(apiKey, apiSecret)).baseUrl(connectionString.getFirst())
+                : WebClient.builder().baseUrl(connectionString.getFirst());
+
+        return new WebFluxSseClientTransport(webClientBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "mcp.client", name = "mode", havingValue = "stdio")
+    public ClientMcpTransport stdioServerTransport() {
+        final String command = connectionString.getFirst();
+        final List<String> args = connectionString.size() > 1
+                ? connectionString.stream().skip(1).collect(Collectors.toList())
+                : null;
+
+        ServerParameters params = ServerParameters.builder(command)
+                .args(args)
+                .build();
+
+        return new StdioClientTransport(params);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public McpAsyncClient getMcpAsyncClient(ClientMcpTransport sseServerTransport,
+                                            ApplicationEventPublisher applicationEventPublisher) {
+        final McpAsyncClient client = McpClient.async(sseServerTransport)
+                .requestTimeout(Duration.ofSeconds(timeout))
+                .capabilities(McpSchema.ClientCapabilities.builder()
+                        .roots(true)
+                        .build())
+                .toolsChangeConsumer(tools -> Mono.fromRunnable(() -> {
+                    log.trace("Tools updated: {}", tools);
+                    applicationEventPublisher.publishEvent(new ToolsChangeEvent(this, tools));
+                }))
+                .resourcesChangeConsumer(resources -> Mono.fromRunnable(() -> {
+                    log.trace("Resources updated: {}", resources);
+                    applicationEventPublisher.publishEvent(new ResourcesChangeEvent(this, resources));
+                }))
+                .build();
+
+        client.initialize().block();
+
+        return client;
+    }
+
+}

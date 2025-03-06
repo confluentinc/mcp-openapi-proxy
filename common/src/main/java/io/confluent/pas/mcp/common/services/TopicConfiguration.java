@@ -1,5 +1,6 @@
 package io.confluent.pas.mcp.common.services;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public interface TopicConfiguration {
@@ -29,7 +30,7 @@ public interface TopicConfiguration {
      * @return Topic configuration
      */
     default Map<String, String> getConfig() {
-        return null;
+        return new HashMap<>();
     }
 
 }
