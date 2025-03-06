@@ -1,5 +1,6 @@
 package io.confluent.pas.mcp.exemple;
 
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.common.utils.UriTemplate;
 import io.confluent.pas.mcp.proxy.frameworks.java.Request;
@@ -27,13 +28,16 @@ public class ResourceAgent {
     /**
      * Constructor to initialize the ResourceAgent with required dependencies.
      *
-     * @param subscriptionHandler Handles subscription-related operations.
-     * @param registration        Contains registration details for the resource.
+     * @param configuration Kafka configuration for the agent.
+     * @param registration  Contains registration details for the resource.
      */
     @Autowired
-    public ResourceAgent(SubscriptionHandler<Key, Schemas.ResourceRequest, Schemas.TextResourceResponse> subscriptionHandler,
-                         Schemas.ResourceRegistration registration) {
-        this.subscriptionHandler = subscriptionHandler;
+    public ResourceAgent(KafkaConfiguration configuration, Schemas.ResourceRegistration registration) {
+        this.subscriptionHandler = new SubscriptionHandler<>(
+                configuration,
+                Key.class,
+                Schemas.ResourceRequest.class,
+                Schemas.TextResourceResponse.class);
         this.registration = registration;
         this.template = new UriTemplate(registration.getUrl());
     }
