@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.java.spring;
+package io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.server.McpAsyncServer;
@@ -15,16 +15,29 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.reactive.function.server.RouterFunction;
 
-
+/**
+ * Auto-configuration class for Model Control Protocol (MCP) server.
+ * Configures and initializes the MCP server with either SSE or stdio transport.
+ * Only activated when the 'mcp.server.name' property is present.
+ */
 @Slf4j
 @AutoConfiguration
 @ConditionalOnProperty(prefix = "mcp.server", name = "name")
 public class McpServerAutoConfiguration {
+    /**
+     * Endpoint path for MCP messages
+     */
     private final static String MESSAGE_ENDPOINT = "/mcp/message";
 
+    /**
+     * Name identifier for the MCP server
+     */
     @Value("${mcp.server.name}")
     private String name;
 
+    /**
+     * Version identifier for the MCP server
+     */
     @Value("${mcp.server.version}")
     private String version;
 
@@ -68,8 +81,9 @@ public class McpServerAutoConfiguration {
     /**
      * Creates an asynchronous MCP server instance.
      * This method initializes the server with the specified transport and server information.
+     * Configures server capabilities including tools support, resource management, and logging.
      *
-     * @param transport the ServerMcpTransport instance
+     * @param transport the ServerMcpTransport instance (either SSE or stdio)
      * @return the configured McpAsyncServer instance
      */
     @Bean
@@ -90,5 +104,4 @@ public class McpServerAutoConfiguration {
                         .build())
                 .build();
     }
-
 }

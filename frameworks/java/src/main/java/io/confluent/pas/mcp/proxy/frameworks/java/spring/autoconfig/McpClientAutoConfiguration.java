@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.java.spring;
+package io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig;
 
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.ResourcesChangeEvent;
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.ToolsChangeEvent;
@@ -25,23 +25,46 @@ import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Auto-configuration class for Model Control Protocol (MCP) client.
+ * This class is activated when the 'mcp.client.connection-string' property is present.
+ */
 @Slf4j
 @AutoConfiguration
 @ConditionalOnProperty(prefix = "mcp.client", name = "connection-string")
 public class McpClientAutoConfiguration {
 
+    /**
+     * List of connection strings for the MCP client
+     */
     @Value("#{'${mcp.client.connection-string}'.split(',')}")
     private List<String> connectionString;
 
+    /**
+     * Client request timeout in seconds, defaults to 60
+     */
     @Value("${mcp.client.timeout:60}")
     private int timeout;
 
+    /**
+     * API key for authentication (optional)
+     */
     @Value("${mcp.client.api.key:#{null}}")
     private String apiKey;
 
+    /**
+     * API secret for authentication (optional)
+     */
     @Value("${mcp.client.api.secret:#{null}}")
     private String apiSecret;
 
+    /**
+     * Creates a Server-Sent Events (SSE) transport bean for MCP client.
+     * Only created when mcp.client.mode=sse.
+     * Supports optional basic authentication using API key and secret.
+     *
+     * @return A configured WebFlux SSE transport instance
+     */
     @Bean
     @ConditionalOnProperty(prefix = "mcp.client", name = "mode", havingValue = "sse")
     public ClientMcpTransport sseServerTransport() {
@@ -52,6 +75,13 @@ public class McpClientAutoConfiguration {
         return new WebFluxSseClientTransport(webClientBuilder);
     }
 
+    /**
+     * Creates a Standard IO transport bean for MCP client.
+     * Only created when mcp.client.mode=stdio.
+     * Supports command and arguments from connection string.
+     *
+     * @return A configured StdIO transport instance
+     */
     @Bean
     @ConditionalOnProperty(prefix = "mcp.client", name = "mode", havingValue = "stdio")
     public ClientMcpTransport stdioServerTransport() {
@@ -67,6 +97,14 @@ public class McpClientAutoConfiguration {
         return new StdioClientTransport(params);
     }
 
+    /**
+     * Creates and initializes the MCP async client bean.
+     * Configures the client with timeout, capabilities, and event handlers for tools and resources changes.
+     *
+     * @param sseServerTransport        Transport layer for the client
+     * @param applicationEventPublisher Spring event publisher for broadcasting changes
+     * @return An initialized MCP async client
+     */
     @Bean
     @ConditionalOnMissingBean
     public McpAsyncClient getMcpAsyncClient(ClientMcpTransport sseServerTransport,
@@ -90,5 +128,4 @@ public class McpClientAutoConfiguration {
 
         return client;
     }
-
 }

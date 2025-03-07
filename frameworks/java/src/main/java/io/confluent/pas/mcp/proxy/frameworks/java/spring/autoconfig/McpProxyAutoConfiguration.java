@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.java.spring;
+package io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig;
 
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.TopicConfiguration;
@@ -8,32 +8,80 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 
+/**
+ * Auto-configuration class for MCP Proxy Kafka settings.
+ * Provides configuration beans for Kafka connection and topic management.
+ */
 @AutoConfiguration
 public class McpProxyAutoConfiguration {
 
+    /**
+     * Comma-separated list of Kafka broker addresses
+     */
     @Value("${kafka.broker-servers}")
     private String brokerServers;
+
+    /**
+     * Schema Registry URL for Kafka schema management
+     */
     @Value("${kafka.sr-url}")
     private String schemaRegistryUrl;
+
+    /**
+     * Unique identifier for the Kafka application
+     */
     @Value("${kafka.application-id}")
     private String applicationId;
+
+    /**
+     * Security protocol for Kafka connection (defaults to KafkaConfiguration.DEFAULT_SECURITY_PROTOCOL)
+     */
     @Value("${kafka.security-protocol:" + KafkaConfiguration.DEFAULT_SECURITY_PROTOCOL + "}")
     private String securityProtocol;
+
+    /**
+     * SASL mechanism for authentication (defaults to KafkaConfiguration.DEFAULT_SASL_MECHANISM)
+     */
     @Value("${kafka.sasl-mechanism:" + KafkaConfiguration.DEFAULT_SASL_MECHANISM + "}")
     private String saslMechanism;
+
+    /**
+     * JAAS configuration for Kafka authentication
+     */
     @Value("${kafka.jaas-config}")
     private String saslJaasConfig;
+
+    /**
+     * Basic authentication credentials for Schema Registry
+     */
     @Value("${kafka.sr-basic-auth}")
     private String schemaRegistryBasicAuthUserInfo;
+
+    /**
+     * Topic name for registration events (defaults to KafkaConfiguration.DEFAULT_REGISTRATION_TOPIC_NAME)
+     */
     @Value("${kafka.registration-topic-name:" + KafkaConfiguration.DEFAULT_REGISTRATION_TOPIC_NAME + "}")
     private String registrationTopicName;
+
+    /**
+     * Optional topic-specific configuration settings
+     */
     @Value("${kafka.topic-configuration:#{null}}")
     private TopicConfiguration topicConfiguration;
 
+    /**
+     * Implementation record for Kafka configuration settings.
+     * Provides immutable storage of all Kafka-related configuration parameters.
+     */
     public record KafkaConfigurationImpl(String brokerServers, String schemaRegistryUrl, String applicationId,
                                          String securityProtocol, String saslMechanism, String saslJaasConfig,
                                          String schemaRegistryBasicAuthUserInfo, String registrationTopicName,
                                          TopicConfiguration topicConfiguration) implements KafkaConfiguration {
+
+        /**
+         * Constructs a new KafkaConfigurationImpl with the specified parameters.
+         * Applies default values where necessary and ensures all required fields are properly initialized.
+         */
         public KafkaConfigurationImpl(String brokerServers,
                                       String schemaRegistryUrl,
                                       String applicationId,
@@ -56,11 +104,24 @@ public class McpProxyAutoConfiguration {
                     : topicConfiguration;
         }
 
+        /**
+         * Helper method to handle null or empty values by returning a default value.
+         *
+         * @param value        The input value to check
+         * @param defaultValue The default value to return if input is empty
+         * @return The input value if not empty, otherwise the default value
+         */
         private static String getValue(final String value, final String defaultValue) {
             return StringUtils.isEmpty(value) ? defaultValue : value;
         }
     }
 
+    /**
+     * Creates a KafkaConfiguration bean if none exists.
+     * Combines all configuration properties into a single configuration object.
+     *
+     * @return A new KafkaConfiguration instance with all configured properties
+     */
     @Bean
     @ConditionalOnMissingBean
     public KafkaConfiguration getKafkaConfiguration() {
@@ -76,5 +137,4 @@ public class McpProxyAutoConfiguration {
                 topicConfiguration
         );
     }
-
 }

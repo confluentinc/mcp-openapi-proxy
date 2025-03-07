@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.java.spring;
+package io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig;
 
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.AsyncMcpToolCallbackProvider;
@@ -15,9 +15,9 @@ import org.springframework.context.annotation.Bean;
 import java.util.List;
 
 /**
- * Spring Auto-configuration class for MCP (Model Control Plane) agent registration.
- * Provides automatic configuration for registering agents within the MCP ecosystem by
- * creating a Registration bean with the necessary properties.
+ * Auto-configuration class for MCP (Model Control Protocol) agent registration.
+ * Provides configuration for registering agents in the MCP ecosystem.
+ * Only activated when the 'agent.name' property is present.
  */
 @Slf4j
 @AutoConfiguration
@@ -25,44 +25,49 @@ import java.util.List;
 public class McpRegistrationAutoConfiguration {
 
     /**
-     * The name of the agent to be registered.
-     * Injected from the 'agent.name' property.
+     * Name identifier for the agent
      */
     @Value("${agent.name}")
     private String name;
 
     /**
-     * Description of the agent's capabilities and purpose.
-     * Injected from the 'registration.description' property.
+     * Human-readable description of the agent's purpose and capabilities
      */
     @Value("${agent.description}")
     private String agentDescription;
 
     /**
-     * Kafka topic name where the agent will consume requests from.
-     * Injected from the 'registration.request-topic' property.
+     * Kafka topic name where the agent listens for incoming requests
      */
     @Value("${agent.request-topic}")
     private String requestTopic;
 
     /**
-     * Kafka topic name where the agent will produce responses to.
-     * Injected from the 'registration.response-topic' property.
+     * Kafka topic name where the agent publishes responses
      */
     @Value("${agent.response-topic}")
     private String responseTopic;
 
     /**
-     * Field name used for request-response correlation.
-     * Defaults to the standard correlation ID field name if not specified.
-     * Injected from the 'registration.correlation-id' property.
+     * Field name for request-response correlation, defaults to standard name
      */
     @Value("${agent.correlation-id:" + Schemas.Registration.CORRELATION_ID_FIELD_NAME + "}")
     private String correlationIdFieldName;
 
+    /**
+     * Comma-separated list of tool names to be denied access
+     */
     @Value("${agent.deny-tools:#{null}}")
     private String deniedTools;
 
+    /**
+     * Creates a ToolCallbackProvider bean for handling MCP tool interactions.
+     * Configures tool access restrictions if deny-tools are specified.
+     *
+     * @param registration   Registration configuration for the agent
+     * @param mcpAsyncClient Async MCP client instance
+     * @return Configured ToolCallbackProvider instance
+     */
     @Bean
     @ConditionalOnMissingBean
     public ToolCallbackProvider getToolCallbackProvider(Schemas.Registration registration, McpAsyncClient mcpAsyncClient) {
@@ -77,11 +82,10 @@ public class McpRegistrationAutoConfiguration {
     }
 
     /**
-     * Creates a Registration bean for the agent if one hasn't been defined.
-     * This bean contains all the necessary information for registering the agent
-     * in the MCP ecosystem.
+     * Creates a Registration bean with the agent's configuration.
+     * Contains all necessary information for registering the agent in MCP.
      *
-     * @return A Registration instance configured with the agent's properties
+     * @return Configured Registration instance
      */
     @Bean
     @ConditionalOnMissingBean

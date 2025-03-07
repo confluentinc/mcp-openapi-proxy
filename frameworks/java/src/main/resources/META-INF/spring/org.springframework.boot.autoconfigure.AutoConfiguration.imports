@@ -1,4 +1,4 @@
-io.confluent.pas.mcp.proxy.frameworks.java.spring.McpProxyAutoConfiguration
-io.confluent.pas.mcp.proxy.frameworks.java.spring.McpRegistrationAutoConfiguration
-io.confluent.pas.mcp.proxy.frameworks.java.spring.McpServerAutoConfiguration
-io.confluent.pas.mcp.proxy.frameworks.java.spring.McpClientAutoConfiguration
+io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig.McpProxyAutoConfiguration
+io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig.McpRegistrationAutoConfiguration
+io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig.McpServerAutoConfiguration
+io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig.McpClientAutoConfiguration

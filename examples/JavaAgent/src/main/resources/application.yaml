@@ -13,7 +13,7 @@ kafka:
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
 agent:
-  name: "SampleJavaAgent"
+  name: "sample_java_agent"
   description: "A sample Java agent that analyzes the sentiment of the text and provides the sentiment score."
   request-topic: "sample_agent_request"
   response-topic: "sample_agent_response"
