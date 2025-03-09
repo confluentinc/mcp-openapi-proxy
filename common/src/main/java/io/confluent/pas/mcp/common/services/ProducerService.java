@@ -2,6 +2,7 @@ package io.confluent.pas.mcp.common.services;
 
 import io.confluent.pas.mcp.common.utils.Lazy;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import reactor.core.publisher.Mono;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Mono;
  * @param <K> the type of the key
  * @param <V> the type of the value
  */
+@Slf4j
 @AllArgsConstructor
 public class ProducerService<K, V> {
 
@@ -34,6 +36,7 @@ public class ProducerService<K, V> {
             producer.get()
                     .send(record, (metadata, exception) -> {
                         if (exception != null) {
+                            log.error("Error sending message to topic: {}", topic, exception);
                             sink.error(exception);
                         } else {
                             sink.success();

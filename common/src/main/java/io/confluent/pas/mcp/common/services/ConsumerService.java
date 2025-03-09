@@ -89,7 +89,9 @@ public class ConsumerService<K, V> {
         stopRequested.set(true);
         executorSvc.shutdown();
         try {
-            executorSvc.awaitTermination(10, TimeUnit.SECONDS);
+            if (!executorSvc.awaitTermination(10, TimeUnit.SECONDS)) {
+                log.warn("Executor did not terminate in the specified time");
+            }
         } catch (InterruptedException e) {
             log.warn("Error stopping executor", e);
         }

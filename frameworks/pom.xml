@@ -17,6 +17,7 @@
 
     <modules>
         <module>java</module>
+        <module>mpc-client-proxy</module>
     </modules>
 
 </project>

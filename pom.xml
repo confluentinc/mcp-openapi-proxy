@@ -44,9 +44,9 @@
 
     <modules>
         <module>shell</module>
-        <module>proxy</module>
         <module>frameworks</module>
         <module>common</module>
+        <module>proxy</module>
         <module>./examples/JavaAgent</module>
         <module>./examples/JavaRCSProvider</module>
     </modules>

@@ -4,6 +4,7 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializerConfig;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializerConfig;
 import io.confluent.pas.mcp.common.utils.SchemaUtils;
 import io.kcache.KafkaCache;
 import lombok.extern.slf4j.Slf4j;
@@ -106,6 +107,7 @@ public class RegistrationService<K extends Schemas.RegistrationKey, R extends Sc
         final Map<String, Object> srConfig = KafkaPropertiesFactory.getSchemaRegistryConfig(kafkaConfiguration);
         srConfig.put(KafkaJsonSchemaDeserializerConfig.JSON_KEY_TYPE, registrationKeyClass);
         srConfig.put(KafkaJsonSchemaDeserializerConfig.JSON_VALUE_TYPE, registrationClass);
+        srConfig.put(KafkaJsonSchemaSerializerConfig.AUTO_REGISTER_SCHEMAS, true);
 
         final Serde<K> keySerdes = new Serdes.WrapperSerde<>(
                 new KafkaJsonSchemaSerializer<>(),

@@ -150,3 +150,8 @@ builds/
 .unique_id
 dump_env.sh
 services/websocket/src/main/resources/static/
+
+.venv
+.python-version
+pyproject.toml
+uv.lock

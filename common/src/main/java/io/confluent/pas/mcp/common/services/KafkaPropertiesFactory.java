@@ -7,6 +7,7 @@ import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializerConfig;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializerConfig;
 import io.kcache.KafkaCacheConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -64,6 +65,7 @@ public class KafkaPropertiesFactory {
         properties.put(ProducerConfig.CLIENT_ID_CONFIG, configration.applicationId());
         properties.put("key.serializer", KafkaJsonSchemaSerializer.class.getName());
         properties.put("value.serializer", KafkaJsonSchemaSerializer.class.getName());
+        properties.put(KafkaJsonSchemaSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
         return properties;
     }
 

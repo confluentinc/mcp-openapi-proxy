@@ -89,6 +89,23 @@ public class SchemaUtils {
             throw e;
         }
 
+        registerSchema(topicName, jsonSchema, forKey, schemaRegistryClient);
+    }
+
+    /**
+     * Register a schema for a topic
+     *
+     * @param topicName            Topic name
+     * @param jsonSchema           Schema
+     * @param forKey               If the schema is for the key
+     * @param schemaRegistryClient Schema registry client
+     * @throws IOException         If the schema cannot be generated
+     * @throws RestClientException If the schema cannot be registered
+     */
+    public static void registerSchema(String topicName,
+                                      JsonSchema jsonSchema,
+                                      boolean forKey,
+                                      SchemaRegistryClient schemaRegistryClient) throws IOException, RestClientException {
         // Then register the schema
         try {
             final String subject = topicName + (forKey ? "-key" : "-value");

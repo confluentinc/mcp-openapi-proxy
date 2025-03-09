@@ -1,5 +1,6 @@
 package io.confluent.pas.mcp.proxy.frameworks.java;
 
+import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.pas.mcp.common.services.ConsumerService;
 import io.confluent.pas.mcp.common.services.ProducerService;
 import io.confluent.pas.mcp.common.services.RegistrationService;
@@ -104,6 +105,37 @@ public class SubscriptionHandler<K extends Key, REQ, RES> {
             throw new SubscriptionException("Failed to create topic", e);
         }
 
+        subscribe(registration, handler);
+    }
+
+    /**
+     * Subscribes to a registration and handles incoming requests.
+     *
+     * @param registration   Registration to use for the subscription
+     * @param handler        RequestHandler to handle the request
+     * @param requestSchema  The request schema
+     * @param responseSchema The response schema
+     * @throws SubscriptionException if there is an error during subscription
+     */
+    public void subscribeWith(Schemas.Registration registration,
+                              JsonSchema requestSchema,
+                              JsonSchema responseSchema,
+                              RequestHandler<K, REQ, RES> handler) throws SubscriptionException {
+        log.info("Subscribing for registration: {}", registration.getName());
+
+        // First we create the topic for the request/response
+        try {
+            topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestSchema);
+            topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseSchema);
+        } catch (Exception e) {
+            log.error("Failed to create topic", e);
+            throw new SubscriptionException("Failed to create topic", e);
+        }
+
+        subscribe(registration, handler);
+    }
+
+    private void subscribe(Schemas.Registration registration, RequestHandler<K, REQ, RES> handler) {
         // Register the capability
         final Schemas.RegistrationKey registrationKey = new Schemas.RegistrationKey(registration.getName());
         if (!registrationService.isRegistered(registrationKey)) {
