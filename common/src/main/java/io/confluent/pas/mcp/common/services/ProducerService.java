@@ -7,6 +7,9 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import reactor.core.publisher.Mono;
 
+import java.io.Closeable;
+import java.io.IOException;
+
 /**
  * ProducerService class that handles sending messages to Kafka topics.
  * This class uses a lazy-initialized KafkaProducer to send messages asynchronously.
@@ -16,7 +19,7 @@ import reactor.core.publisher.Mono;
  */
 @Slf4j
 @AllArgsConstructor
-public class ProducerService<K, V> {
+public class ProducerService<K, V> implements Closeable {
 
     private final KafkaConfiguration kafkaConfiguration;
     private final Lazy<KafkaProducer<K, V>> producer = new Lazy<>(this::createNewProducer);
@@ -52,5 +55,12 @@ public class ProducerService<K, V> {
      */
     private KafkaProducer<K, V> createNewProducer() {
         return new KafkaProducer<>(KafkaPropertiesFactory.getProducerProperties(kafkaConfiguration));
+    }
+
+    @Override
+    public void close() {
+        if (producer.isInitialized()) {
+            producer.get().close();
+        }
     }
 }

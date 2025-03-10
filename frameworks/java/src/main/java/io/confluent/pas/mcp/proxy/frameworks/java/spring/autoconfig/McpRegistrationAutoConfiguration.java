@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -69,7 +70,7 @@ public class McpRegistrationAutoConfiguration {
      * @return Configured ToolCallbackProvider instance
      */
     @Bean
-    @ConditionalOnMissingBean
+    @ConditionalOnBean(McpAsyncClient.class)
     public ToolCallbackProvider getToolCallbackProvider(Schemas.Registration registration, McpAsyncClient mcpAsyncClient) {
         final AsyncMcpToolCallbackProvider provider = new AsyncMcpToolCallbackProvider(registration, mcpAsyncClient);
 
@@ -98,4 +99,9 @@ public class McpRegistrationAutoConfiguration {
                 .correlationIdFieldName(correlationIdFieldName)
                 .build();
     }
+
+//    @Bean
+//    public AgentRegistrar agentRegistrar(KafkaConfiguration kafkaConfiguration, ApplicationContext applicationContext) {
+//        return new AgentRegistrar(kafkaConfiguration, applicationContext);
+//    }
 }

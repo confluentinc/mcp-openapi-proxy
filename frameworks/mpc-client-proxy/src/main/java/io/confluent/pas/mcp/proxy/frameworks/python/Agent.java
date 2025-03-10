@@ -101,7 +101,7 @@ public class Agent {
     @PreDestroy
     public void destroy() {
         if (subscriptionHandler != null) {
-            subscriptionHandler.stop();
+            subscriptionHandler.close();
         }
     }
 
@@ -124,7 +124,6 @@ public class Agent {
                 AgentGenericRequest.class,
                 JsonNode.class);
 
-        subscriptionHandler.start();
         subscriptionHandler.subscribeWith(
                 registration,
                 createInputSchema(handler.tool()),

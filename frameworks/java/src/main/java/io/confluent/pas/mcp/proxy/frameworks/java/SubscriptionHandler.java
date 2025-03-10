@@ -10,6 +10,9 @@ import io.confluent.pas.mcp.proxy.frameworks.java.kafka.TopicManagement;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.Closeable;
+import java.io.IOException;
+
 /**
  * SubscriptionHandler class that handles the subscription to a registration.
  * This class manages the lifecycle of Kafka consumers and producers, and handles
@@ -20,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
  * @param <RES> Response type
  */
 @Slf4j
-public class SubscriptionHandler<K extends Key, REQ, RES> {
+public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
 
     /**
      * RequestHandler interface for handling incoming requests.
@@ -71,18 +74,11 @@ public class SubscriptionHandler<K extends Key, REQ, RES> {
         this.responseClass = responseClass;
     }
 
-    /**
-     * Starts the registration service.
-     */
-    public void start() {
-        registrationService.start();
-    }
-
-    /**
-     * Start the service
-     */
-    public void stop() {
-        requestService.stop();
+    @Override
+    public void close() {
+        registrationService.close();
+        requestService.close();
+        responseService.close();
     }
 
     /**

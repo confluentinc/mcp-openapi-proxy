@@ -3,13 +3,9 @@ package io.confluent.pas.mcp.exemple;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.service.AiServices;
-import io.confluent.pas.mcp.common.services.KafkaConfiguration;
-import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import io.confluent.pas.mcp.proxy.frameworks.java.Request;
-import io.confluent.pas.mcp.proxy.frameworks.java.SubscriptionHandler;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+import io.confluent.pas.mcp.proxy.frameworks.java.spring.annotation.Agent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,39 +16,13 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
-public class Agent {
+public class AgentInstance {
 
-    @Value("${model.gemini-key}")
-    private String geminiKey;
-
-    @Value("${model.system-prompt}")
-    private String systemPrompt;
-
-    private final SubscriptionHandler<Key, AgentQuery, AgentResponse> subscriptionHandler;
-    private final Schemas.Registration registration;
-    private Assistant assistant;
+    private final Assistant assistant;
 
     @Autowired
-    public Agent(KafkaConfiguration configuration, Schemas.Registration registration) {
-        this.subscriptionHandler = new SubscriptionHandler<>(
-                configuration,
-                Key.class,
-                AgentQuery.class,
-                AgentResponse.class);
-        this.registration = registration;
-    }
-
-    /**
-     * Initializes the agent by starting the subscription handler and setting up the assistant.
-     */
-    @PostConstruct
-    public void init() {
-        // Start the subscription handler
-        subscriptionHandler.start();
-
-        // Subscribe using the registration information and handle requests with the onRequest method
-        subscriptionHandler.subscribeWith(registration, this::onRequest);
-
+    public AgentInstance(@Value("${model.gemini-key}") String geminiKey,
+                         @Value("${model.system-prompt}") String systemPrompt) {
         // Create a ChatLanguageModel using the Google AI Gemini model
         final ChatLanguageModel chatLanguageModel = GoogleAiGeminiChatModel.builder()
                 .apiKey(geminiKey)
@@ -67,20 +37,19 @@ public class Agent {
     }
 
     /**
-     * Cleans up resources by stopping the subscription handler.
-     */
-    @PreDestroy
-    public void destroy() {
-        // Stop the subscription handler
-        subscriptionHandler.stop();
-    }
-
-    /**
      * Handles incoming requests by processing the query and responding with the sentiment analysis result.
      *
      * @param request The incoming request containing the query.
      */
-    private void onRequest(Request<Key, AgentQuery, AgentResponse> request) {
+    @Agent(
+            name = "sample_java_agent",
+            description = "A sample Java agent that performs sentiment analysis using the Google AI Gemini model.",
+            request_topic = "sample_java_agent_request",
+            response_topic = "sample_java_agent_response",
+            requestClass = AgentQuery.class,
+            responseClass = AgentResponse.class
+    )
+    public void onRequest(Request<Key, AgentQuery, AgentResponse> request) {
         log.info("Received request: {}", request.getRequest().query());
 
         // Process the query using the assistant and get the response

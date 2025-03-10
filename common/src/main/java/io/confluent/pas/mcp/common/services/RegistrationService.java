@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,7 @@ import java.util.Map;
  * @param <R> the type of registration
  */
 @Slf4j
-public class RegistrationService<K extends Schemas.RegistrationKey, R extends Schemas.Registration> {
+public class RegistrationService<K extends Schemas.RegistrationKey, R extends Schemas.Registration> implements Closeable {
 
     private final KafkaConfiguration kafkaConfiguration;
     private final Class<K> registrationKeyClass;
@@ -52,6 +53,8 @@ public class RegistrationService<K extends Schemas.RegistrationKey, R extends Sc
         this.registrationClass = registrationClass;
         this.readOnly = readOnly;
         this.handler = handler;
+
+        initialize();
     }
 
     /**
@@ -98,60 +101,11 @@ public class RegistrationService<K extends Schemas.RegistrationKey, R extends Sc
         this(kafkaConfiguration, registrationKeyClass, registrationClass, false, null);
     }
 
-
-    /**
-     * Initialize the registration service.
-     * Configures the Kafka serializers and deserializers, and initializes the Kafka cache.
-     */
-    public void start() {
-        final Map<String, Object> srConfig = KafkaPropertiesFactory.getSchemaRegistryConfig(kafkaConfiguration);
-        srConfig.put(KafkaJsonSchemaDeserializerConfig.JSON_KEY_TYPE, registrationKeyClass);
-        srConfig.put(KafkaJsonSchemaDeserializerConfig.JSON_VALUE_TYPE, registrationClass);
-        srConfig.put(KafkaJsonSchemaSerializerConfig.AUTO_REGISTER_SCHEMAS, true);
-
-        final Serde<K> keySerdes = new Serdes.WrapperSerde<>(
-                new KafkaJsonSchemaSerializer<>(),
-                new KafkaJsonSchemaDeserializer<>()
-        );
-        keySerdes.configure(srConfig, true);
-
-        final Serde<R> valueSerdes = new Serdes.WrapperSerde<>(
-                new KafkaJsonSchemaSerializer<>(),
-                new KafkaJsonSchemaDeserializer<>()
-        );
-        valueSerdes.configure(srConfig, false);
-
-        final RegistrationServiceHandler<K, R> serviceHandler = handler != null
-                ? new RegistrationServiceHandler<>(handler)
-                : null;
-
-        registrationCache = new KafkaCache<>(
-                KafkaPropertiesFactory.getCacheConfig(kafkaConfiguration, readOnly),
-                keySerdes,
-                valueSerdes,
-                serviceHandler,
-                null
-        );
-
-        registrationCache.init();
-
-        if (serviceHandler != null && serviceHandler.isShouldCreateSchemas()) {
-            final String registrationTopic = kafkaConfiguration.registrationTopicName();
-
-            try (SchemaRegistryClient schemaRegistryClient = KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfiguration)) {
-                SchemaUtils.registerSchemaIfMissing(registrationTopic, registrationKeyClass, true, schemaRegistryClient);
-                SchemaUtils.registerSchemaIfMissing(registrationTopic, registrationClass, false, schemaRegistryClient);
-            } catch (Throwable e) {
-                log.error("Error registering schemas", e);
-            }
-
-        }
-    }
-
     /**
      * Close the registration service.
      * Closes the Kafka cache and handles any IO exceptions.
      */
+    @Override
     public void close() {
         try {
             registrationCache.close();
@@ -202,4 +156,53 @@ public class RegistrationService<K extends Schemas.RegistrationKey, R extends Sc
         registrationCache.remove(key);
     }
 
+
+    /**
+     * Initialize the registration service.
+     * Configures the Kafka serializers and deserializers, and initializes the Kafka cache.
+     */
+    private void initialize() {
+        final Map<String, Object> srConfig = KafkaPropertiesFactory.getSchemaRegistryConfig(kafkaConfiguration);
+        srConfig.put(KafkaJsonSchemaDeserializerConfig.JSON_KEY_TYPE, registrationKeyClass);
+        srConfig.put(KafkaJsonSchemaDeserializerConfig.JSON_VALUE_TYPE, registrationClass);
+        srConfig.put(KafkaJsonSchemaSerializerConfig.AUTO_REGISTER_SCHEMAS, true);
+
+        final Serde<K> keySerdes = new Serdes.WrapperSerde<>(
+                new KafkaJsonSchemaSerializer<>(),
+                new KafkaJsonSchemaDeserializer<>()
+        );
+        keySerdes.configure(srConfig, true);
+
+        final Serde<R> valueSerdes = new Serdes.WrapperSerde<>(
+                new KafkaJsonSchemaSerializer<>(),
+                new KafkaJsonSchemaDeserializer<>()
+        );
+        valueSerdes.configure(srConfig, false);
+
+        final RegistrationServiceHandler<K, R> serviceHandler = handler != null
+                ? new RegistrationServiceHandler<>(handler)
+                : null;
+
+        registrationCache = new KafkaCache<>(
+                KafkaPropertiesFactory.getCacheConfig(kafkaConfiguration, readOnly),
+                keySerdes,
+                valueSerdes,
+                serviceHandler,
+                null
+        );
+
+        registrationCache.init();
+
+        if (serviceHandler != null && serviceHandler.isShouldCreateSchemas()) {
+            final String registrationTopic = kafkaConfiguration.registrationTopicName();
+
+            try (SchemaRegistryClient schemaRegistryClient = KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfiguration)) {
+                SchemaUtils.registerSchemaIfMissing(registrationTopic, registrationKeyClass, true, schemaRegistryClient);
+                SchemaUtils.registerSchemaIfMissing(registrationTopic, registrationClass, false, schemaRegistryClient);
+            } catch (Throwable e) {
+                log.error("Error registering schemas", e);
+            }
+
+        }
+    }
 }

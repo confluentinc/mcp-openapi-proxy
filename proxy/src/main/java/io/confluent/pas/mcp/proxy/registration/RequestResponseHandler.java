@@ -7,6 +7,7 @@ import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.internal.KafkaResponseHandler;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -20,7 +21,7 @@ import java.util.concurrent.ExecutionException;
  */
 @Slf4j
 @Component
-public class RequestResponseHandler {
+public class RequestResponseHandler implements DisposableBean {
 
     private final ProducerService<JsonNode, JsonNode> producerService;
     private final KafkaResponseHandler kafkaResponseHandler;
@@ -61,5 +62,11 @@ public class RequestResponseHandler {
                 .doOnError(sink::tryEmitError)
                 .doOnSuccess(metadata -> log.info("Sent request to topic: {}", registration.getRequestTopicName()))
                 .then(sink.asMono());
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        kafkaResponseHandler.close();
+        producerService.close();
     }
 }

@@ -12,8 +12,3 @@ kafka:
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
-agent:
-  name: "sample_resource_agent"
-  description: "A sample resource agent that provides information about the resources."
-  request-topic: "sample_agent_rcs_request"
-  response-topic: "sample_agent_rcs_response"

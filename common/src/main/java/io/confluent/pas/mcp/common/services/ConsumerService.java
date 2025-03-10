@@ -5,6 +5,8 @@ import io.confluent.pas.mcp.common.utils.Lazy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -20,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @param <V> Value type
  */
 @Slf4j
-public class ConsumerService<K, V> {
+public class ConsumerService<K, V> implements Closeable {
 
     private final KafkaConfiguration kafkaConfiguration;
     private final Class<K> keyClass;
@@ -85,7 +87,8 @@ public class ConsumerService<K, V> {
     /**
      * Stop the service.
      */
-    public void stop() {
+    @Override
+    public void close() {
         stopRequested.set(true);
         executorSvc.shutdown();
         try {

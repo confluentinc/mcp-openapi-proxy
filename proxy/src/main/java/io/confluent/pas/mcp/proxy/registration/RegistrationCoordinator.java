@@ -8,9 +8,8 @@ import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.handlers.ResourceHandler;
 import io.confluent.pas.mcp.proxy.registration.handlers.ToolHandler;
 import io.modelcontextprotocol.server.McpAsyncServer;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Component
-public class RegistrationCoordinator {
+public class RegistrationCoordinator implements DisposableBean {
 
     private final RequestResponseHandler requestResponseHandler;
     private final McpAsyncServer mcpServer;
@@ -45,27 +44,6 @@ public class RegistrationCoordinator {
                 Schemas.Registration.class,
                 this::handleRegistration);
     }
-
-    /**
-     * Initialize the registration coordinator
-     */
-    @PostConstruct
-    public void init() {
-        log.info("Starting registration coordinator...");
-        registrationService.start();
-        log.info("Registration coordinator started");
-    }
-
-    /**
-     * Teardown the registration coordinator
-     */
-    @PreDestroy
-    public void teardown() {
-        log.info("Stopping registration coordinator...");
-        registrationService.close();
-        log.info("Registration coordinator stopped");
-    }
-
 
     /**
      * Check if a tool is registered
@@ -175,5 +153,10 @@ public class RegistrationCoordinator {
                 })
                 .doOnError(e -> log.error("Error removing tool registration: {}", registrationName, e))
                 .block();
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        registrationService.close();
     }
 }

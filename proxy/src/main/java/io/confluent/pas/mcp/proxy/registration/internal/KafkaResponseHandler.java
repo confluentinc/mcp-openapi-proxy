@@ -4,9 +4,9 @@ import io.confluent.pas.mcp.common.services.ConsumerService;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.common.utils.AutoReadWriteLock;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.Closeable;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -14,7 +14,7 @@ import java.util.concurrent.*;
  * Handle responses from Kafka topics
  */
 @Slf4j
-public class KafkaResponseHandler {
+public class KafkaResponseHandler implements Closeable {
 
     /**
      * Registration Handler
@@ -84,11 +84,9 @@ public class KafkaResponseHandler {
         }
     }
 
-    @PreDestroy
-    public void stop() {
-        log.info("Stopping the response handler");
-        consumerService.stop();
-        log.info("Stopped the response handler");
+    @Override
+    public void close() {
+        consumerService.close();
     }
 
     /**

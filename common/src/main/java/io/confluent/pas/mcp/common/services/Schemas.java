@@ -109,6 +109,10 @@ public class Schemas {
             this(TOOL, name, description, requestTopicName, responseTopicName, CORRELATION_ID_FIELD_NAME);
         }
 
+        public Registration(String name, String description, String requestTopicName, String responseTopicName, String correlationIdFieldName) {
+            this(TOOL, name, description, requestTopicName, responseTopicName, correlationIdFieldName);
+        }
+
         @JsonIgnore
         public boolean isResource() {
             return StringUtils.equals(registrationType, RESOURCE);

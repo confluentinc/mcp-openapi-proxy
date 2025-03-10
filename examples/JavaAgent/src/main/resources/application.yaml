@@ -12,11 +12,6 @@ kafka:
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
-agent:
-  name: "sample_java_agent"
-  description: "A sample Java agent that analyzes the sentiment of the text and provides the sentiment score."
-  request-topic: "sample_agent_request"
-  response-topic: "sample_agent_response"
 model:
   system-prompt: "You are specialized in sentiment analysis. Your job is to analyze the sentiment of the text and provide the sentiment score. The sentiment score is positive, negative, or neutral."
   gemini-key: ${GEMINI_API_KEY}

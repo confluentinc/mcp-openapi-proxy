@@ -106,7 +106,8 @@ public class McpClientAutoConfiguration {
      * @return An initialized MCP async client
      */
     @Bean
-    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "mcp.client", name = "mode")
+    @ConditionalOnMissingBean()
     public McpAsyncClient getMcpAsyncClient(ClientMcpTransport sseServerTransport,
                                             ApplicationEventPublisher applicationEventPublisher) {
         final McpAsyncClient client = McpClient.async(sseServerTransport)
