@@ -1,12 +1,12 @@
 package io.confluent.pas.mcp.proxy.registration.internal;
 
 import io.confluent.pas.mcp.common.services.ConsumerService;
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
+import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.common.utils.AutoReadWriteLock;
-import io.confluent.pas.mcp.proxy.registration.models.Registration;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.Closeable;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -14,7 +14,7 @@ import java.util.concurrent.*;
  * Handle responses from Kafka topics
  */
 @Slf4j
-public class KafkaResponseHandler {
+public class KafkaResponseHandler implements Closeable {
 
     /**
      * Registration Handler
@@ -29,7 +29,7 @@ public class KafkaResponseHandler {
      * @param registration     the registration
      * @param responseHandlers the response handlers
      */
-    private record RegistrationItem(Registration registration,
+    private record RegistrationItem(Schemas.Registration registration,
                                     Map<String, ResponseHandler> responseHandlers) {
     }
 
@@ -44,10 +44,9 @@ public class KafkaResponseHandler {
 
     private final ConsumerService<ResponseKey, Response> consumerService;
 
-    public KafkaResponseHandler(String applicationId, KafkaConfigration kafkaConfigration) {
+    public KafkaResponseHandler(KafkaConfiguration kafkaConfiguration) {
         this.consumerService = new ConsumerService<>(
-                applicationId,
-                kafkaConfigration,
+                kafkaConfiguration,
                 ResponseKey.class,
                 Response.class);
     }
@@ -59,7 +58,7 @@ public class KafkaResponseHandler {
      * @param correlationId the correlation id
      * @param handler       the handler
      */
-    public void registerResponseHandler(Registration registration,
+    public void registerResponseHandler(Schemas.Registration registration,
                                         String correlationId,
                                         ResponseHandler handler) {
         final String responseTopic = registration.getResponseTopicName();
@@ -85,11 +84,9 @@ public class KafkaResponseHandler {
         }
     }
 
-    @PreDestroy
-    public void stop() {
-        log.info("Stopping the response handler");
-        consumerService.stop();
-        log.info("Stopped the response handler");
+    @Override
+    public void close() {
+        consumerService.close();
     }
 
     /**
@@ -103,7 +100,7 @@ public class KafkaResponseHandler {
         try {
             lock.writeLockAndExecute(() -> {
                 final RegistrationItem registrationItem = responseHandlers.get(topic);
-                final Registration registration = registrationItem.registration;
+                final Schemas.Registration registration = registrationItem.registration;
                 final String correlationIdKey = registration.getCorrelationIdFieldName();
                 final Map<String, ResponseHandler> handlers = registrationItem.responseHandlers;
 

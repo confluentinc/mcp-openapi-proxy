@@ -7,7 +7,7 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientFactory;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.core.Authentication;
@@ -26,23 +26,22 @@ import java.util.Map;
 @Slf4j
 public class AuthManager implements ReactiveAuthenticationManager {
 
-    private static final String SCHEMA_REGISTRY_URL = "schema.registry.url";
     private static final String BASIC_AUTH_CREDENTIALS_SOURCE = "basic.auth.credentials.source";
     private static final String USER_INFO = "USER_INFO";
     private static final String SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO = "schema.registry.basic.auth.user.info";
 
-    private final KafkaConfigration.SR schemaRegistryConfig;
+    private final KafkaConfiguration kafkaConfiguration;
     private final Cache<String, UserAuthenticated> usersAuthenticated;
 
     /**
      * Constructs a new AuthManager instance with the provided configuration.
      *
-     * @param schemaRegistryConfig the schema registry configuration
-     * @param cacheSize            the size of the cache
-     * @param cacheExpiry          the expiry time for cache entries in seconds
+     * @param kafkaConfiguration the schema registry configuration
+     * @param cacheSize          the size of the cache
+     * @param cacheExpiry        the expiry time for cache entries in seconds
      */
-    public AuthManager(KafkaConfigration.SR schemaRegistryConfig, int cacheSize, int cacheExpiry) {
-        this.schemaRegistryConfig = schemaRegistryConfig;
+    public AuthManager(KafkaConfiguration kafkaConfiguration, int cacheSize, int cacheExpiry) {
+        this.kafkaConfiguration = kafkaConfiguration;
         this.usersAuthenticated = Caffeine.newBuilder()
                 .maximumSize(cacheSize)
                 .expireAfterWrite(Duration.ofSeconds(cacheExpiry))
@@ -90,7 +89,7 @@ public class AuthManager implements ReactiveAuthenticationManager {
      */
     private SchemaRegistryClient createSchemaRegistryClient(Map<String, Object> config) {
         return SchemaRegistryClientFactory.newClient(
-                List.of(schemaRegistryConfig.url),
+                List.of(kafkaConfiguration.schemaRegistryUrl()),
                 1,
                 List.of(new JsonSchemaProvider(), new AvroSchemaProvider()),
                 config,
@@ -127,7 +126,6 @@ public class AuthManager implements ReactiveAuthenticationManager {
      */
     private Map<String, Object> getSchemaRegistryConfig(String username, String password) {
         Map<String, Object> config = new HashMap<>();
-        config.put(SCHEMA_REGISTRY_URL, schemaRegistryConfig.url);
         config.put(BASIC_AUTH_CREDENTIALS_SOURCE, USER_INFO);
         config.put(SCHEMA_REGISTRY_BASIC_AUTH_USER_INFO, username + ":" + password);
         return config;

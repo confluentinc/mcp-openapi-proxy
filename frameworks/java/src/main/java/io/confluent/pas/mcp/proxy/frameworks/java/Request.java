@@ -1,6 +1,6 @@
 package io.confluent.pas.mcp.proxy.frameworks.java;
 
-import io.confluent.pas.mcp.common.services.models.AbstractRegistration;
+import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.common.services.ProducerService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,7 +19,7 @@ public class Request<K, REQ, RES> {
     private final K key;
     @Getter
     private final REQ request;
-    private final AbstractRegistration registration;
+    private final Schemas.Registration registration;
     private final ProducerService<K, RES> responseService;
 
     /**
@@ -30,8 +30,8 @@ public class Request<K, REQ, RES> {
     public Mono<Void> respond(Response<K, RES> response) {
         return responseService.send(
                 registration.getResponseTopicName(),
-                response.getKey(),
-                response.getResponse());
+                response.key(),
+                response.response());
     }
 
     /**

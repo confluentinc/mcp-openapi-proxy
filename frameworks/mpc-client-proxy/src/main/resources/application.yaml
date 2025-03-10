@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: "PythonAgent"
+  main:
+    banner-mode: off
+    web-application-type: none
+kafka:
+  application-id: "${APPLICATION_ID}"
+  broker-servers: ${BROKER_URL}
+  jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
+  sr-url: ${SR_URL}
+  sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
+logging:
+  file:
+    name: ${LOG_FILE}
+  pattern:
+    console: ""

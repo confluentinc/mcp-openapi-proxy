@@ -1,0 +1,25 @@
+command: "uv"
+arguments:
+  - "run"
+  - "--with"
+  - "mcp[cli]"
+  - "mcp"
+  - "run"
+  - "/Users/pascal/projects/oss/mcp-openapi-proxy/examples/python/server.py"
+tool:
+  name: "add"
+  output_schema: "
+{
+   \"properties\":{
+      \"result\":{
+         \"connect.index\":0,
+         \"type\":\"number\"
+      }
+   },
+   \"required\":[
+      \"result\"
+   ],
+   \"title\":\"Record\",
+   \"type\":\"object\"
+}
+"

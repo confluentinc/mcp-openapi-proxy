@@ -7,23 +7,11 @@ spring:
   main:
     web-application-type: none
 kafka:
-  broker:
-    url: ${BROKER_URL}
-    security_protocol: SASL_SSL
-    sasl_mechanism: PLAIN
-    jaas_config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
-  schema-registry:
-    url: ${SR_URL}
-    auth_info: ${SR_API_KEY}:${SR_API_SECRET}
-registration:
-  registration-topic: "_agent_registry"
-  application-id: "SampleJavaAgent"
-  request-topic: "sample_agent_request"
-  response-topic: "sample_agent_response"
-topic:
-  timeout: 10000
-  partitions: 6
-  replication-factor: 3
+  application-id: "tool_agent"
+  broker-servers: ${BROKER_URL}
+  jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
+  sr-url: ${SR_URL}
+  sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
 model:
   system-prompt: "You are specialized in sentiment analysis. Your job is to analyze the sentiment of the text and provide the sentiment score. The sentiment score is positive, negative, or neutral."
   gemini-key: ${GEMINI_API_KEY}

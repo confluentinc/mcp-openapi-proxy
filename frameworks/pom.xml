@@ -17,6 +17,8 @@
 
     <modules>
         <module>java</module>
+        <module>mpc-client-proxy</module>
+        <module>mcp-framework-starter</module>
     </modules>
 
 </project>

@@ -5,21 +5,17 @@ import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
+import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.annotations.Schema;
-import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientFactory;
 import io.confluent.kafka.schemaregistry.client.rest.entities.SchemaReference;
 import io.confluent.kafka.schemaregistry.client.rest.entities.requests.RegisterSchemaResponse;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
-import io.confluent.kafka.schemaregistry.json.JsonSchemaProvider;
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,16 +28,6 @@ public class SchemaUtils {
     private final static Lazy<SchemaGenerator> SCHEMA_GENERATOR = new Lazy<>(() -> new SchemaGenerator(new SchemaGeneratorConfigBuilder(
             SchemaVersion.DRAFT_7,
             OptionPreset.PLAIN_JSON).build()));
-
-    public static SchemaRegistryClient getSchemaRegistryClient(KafkaConfigration kafkaConfigration) {
-        return SchemaRegistryClientFactory.newClient(
-                List.of(kafkaConfigration.getSchemaRegistry().url),
-                100,
-                List.of(new JsonSchemaProvider(), new AvroSchemaProvider()),
-                kafkaConfigration.getSchemaRegistryConfig(),
-                new HashMap<>()
-        );
-    }
 
     public static void registerSchemaIfMissing(String topicName,
                                                Class<?> clazz,
@@ -103,9 +89,32 @@ public class SchemaUtils {
             throw e;
         }
 
+        registerSchema(topicName, jsonSchema, forKey, schemaRegistryClient);
+    }
+
+    /**
+     * Register a schema for a topic
+     *
+     * @param topicName            Topic name
+     * @param jsonSchema           Schema
+     * @param forKey               If the schema is for the key
+     * @param schemaRegistryClient Schema registry client
+     * @throws IOException         If the schema cannot be generated
+     * @throws RestClientException If the schema cannot be registered
+     */
+    public static void registerSchema(String topicName,
+                                      JsonSchema jsonSchema,
+                                      boolean forKey,
+                                      SchemaRegistryClient schemaRegistryClient) throws IOException, RestClientException {
         // Then register the schema
         try {
             final String subject = topicName + (forKey ? "-key" : "-value");
+            final List<ParsedSchema> parsedSchemas = schemaRegistryClient.getSchemas(subject, false, true);
+            if (!parsedSchemas.isEmpty()) {
+                log.info("Schema already registered for subject {}", subject);
+                return;
+            }
+
             RegisterSchemaResponse response = schemaRegistryClient.registerWithResponse(
                     subject,
                     jsonSchema,

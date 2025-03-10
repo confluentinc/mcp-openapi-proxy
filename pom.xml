@@ -39,14 +39,16 @@
         <kcache.version>5.2.0</kcache.version>
         <langchain4j.version>1.0.0-beta1</langchain4j.version>
         <reactor.version>2024.0.3</reactor.version>
+        <lombok.version>1.18.32</lombok.version>
     </properties>
 
     <modules>
         <module>shell</module>
-        <module>proxy</module>
         <module>frameworks</module>
         <module>common</module>
+        <module>proxy</module>
         <module>./examples/JavaAgent</module>
+        <module>./examples/JavaRCSProvider</module>
     </modules>
 
     <repositories>
@@ -88,11 +90,29 @@
                 <artifactId>kcache</artifactId>
                 <version>${kcache.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>javadoc</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

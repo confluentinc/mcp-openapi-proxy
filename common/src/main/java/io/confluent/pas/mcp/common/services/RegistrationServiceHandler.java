@@ -1,7 +1,5 @@
 package io.confluent.pas.mcp.common.services;
 
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.pas.mcp.common.utils.SchemaUtils;
 import io.kcache.CacheUpdateHandler;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -9,7 +7,6 @@ import org.apache.kafka.common.TopicPartition;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Handler for registration cache updates.
@@ -20,7 +17,7 @@ import java.util.stream.Collectors;
  * @param <R> the type of registration
  */
 @Slf4j
-public class RegistrationServiceHandler<K extends RegistrationKey, R extends Registration> implements CacheUpdateHandler<K, R> {
+public class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R extends Schemas.Registration> implements CacheUpdateHandler<K, R> {
 
     /**
      * Interface for handling registration updates.
@@ -28,7 +25,7 @@ public class RegistrationServiceHandler<K extends RegistrationKey, R extends Reg
      * @param <K> the type of registration key
      * @param <R> the type of registration
      */
-    public interface Handler<K extends RegistrationKey, R extends Registration> {
+    public interface Handler<K extends Schemas.RegistrationKey, R extends Schemas.Registration> {
         void handleRegistration(K key, R value);
     }
 

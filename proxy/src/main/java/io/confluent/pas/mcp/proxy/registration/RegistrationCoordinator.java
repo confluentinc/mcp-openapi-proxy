@@ -1,16 +1,16 @@
 package io.confluent.pas.mcp.proxy.registration;
 
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.pas.mcp.common.services.KafkaConfigration;
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
+import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
 import io.confluent.pas.mcp.common.services.RegistrationService;
-import io.confluent.pas.mcp.proxy.registration.models.Registration;
-import io.confluent.pas.mcp.proxy.registration.models.RegistrationKey;
+import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.proxy.registration.handlers.ResourceHandler;
+import io.confluent.pas.mcp.proxy.registration.handlers.ToolHandler;
 import io.modelcontextprotocol.server.McpAsyncServer;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -23,54 +23,27 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Component
-public class RegistrationCoordinator {
+public class RegistrationCoordinator implements DisposableBean {
 
     private final RequestResponseHandler requestResponseHandler;
     private final McpAsyncServer mcpServer;
-    private final Map<String, RegistrationHandler> handlers = new ConcurrentHashMap<>();
+    private final Map<String, RegistrationHandler<?, ?>> handlers = new ConcurrentHashMap<>();
     private final SchemaRegistryClient schemaRegistryClient;
-    private final RegistrationService<RegistrationKey, Registration> registrationService;
+    private final RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService;
 
     @Autowired
-    public RegistrationCoordinator(KafkaConfigration kafkaConfigration,
+    public RegistrationCoordinator(KafkaConfiguration kafkaConfiguration,
                                    RequestResponseHandler requestResponseHandler,
-                                   McpAsyncServer mcpServer,
-                                   SchemaRegistryClient schemaRegistryClient,
-                                   @Value("${registration.topic}") String registrationTopic) {
+                                   McpAsyncServer mcpServer) {
         this.requestResponseHandler = requestResponseHandler;
         this.mcpServer = mcpServer;
-        this.schemaRegistryClient = schemaRegistryClient;
+        this.schemaRegistryClient = KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfiguration);
         this.registrationService = new RegistrationService<>(
-                "mcp-proxy-registration",
-                kafkaConfigration,
-                RegistrationKey.class,
-                Registration.class,
-                registrationTopic,
-                false,
-                this::handleRegistration
-        );
+                kafkaConfiguration,
+                Schemas.RegistrationKey.class,
+                Schemas.Registration.class,
+                this::handleRegistration);
     }
-
-    /**
-     * Initialize the registration coordinator
-     */
-    @PostConstruct
-    public void init() {
-        log.info("Starting registration coordinator...");
-        registrationService.start();
-        log.info("Registration coordinator started");
-    }
-
-    /**
-     * Teardown the registration coordinator
-     */
-    @PreDestroy
-    public void teardown() {
-        log.info("Stopping registration coordinator...");
-        registrationService.close();
-        log.info("Registration coordinator stopped");
-    }
-
 
     /**
      * Check if a tool is registered
@@ -88,7 +61,7 @@ public class RegistrationCoordinator {
      * @param name The name of the tool
      * @return The registration handler
      */
-    public RegistrationHandler getRegistrationHandler(String name) {
+    public RegistrationHandler<?, ?> getRegistrationHandler(String name) {
         return handlers.get(name);
     }
 
@@ -97,8 +70,8 @@ public class RegistrationCoordinator {
      *
      * @return The registrations
      */
-    public List<Registration> getAllRegistration() {
-        return registrationService.getAllRegistrations();
+    public List<RegistrationHandler<?, ?>> getAllRegistrationHandlers() {
+        return handlers.values().stream().toList();
     }
 
 
@@ -107,8 +80,8 @@ public class RegistrationCoordinator {
      *
      * @param registration The registration
      */
-    public void register(Registration registration) {
-        registrationService.register(new RegistrationKey(registration.getName()), registration);
+    public void register(Schemas.Registration registration) {
+        registrationService.register(new Schemas.RegistrationKey(registration.getName()), registration);
     }
 
     /**
@@ -117,7 +90,7 @@ public class RegistrationCoordinator {
      * @param name The registration name to delete
      */
     public void unregister(String name) {
-        registrationService.unregister(new RegistrationKey(name));
+        registrationService.unregister(new Schemas.RegistrationKey(name));
     }
 
     /**
@@ -125,7 +98,7 @@ public class RegistrationCoordinator {
      *
      * @param registration The registration
      */
-    private void handleRegistration(RegistrationKey key, Registration registration) {
+    private void handleRegistration(Schemas.RegistrationKey key, Schemas.Registration registration) {
         final String registrationName = key.getName();
 
         // Unregister?
@@ -147,10 +120,9 @@ public class RegistrationCoordinator {
         }
 
         try {
-            RegistrationHandler handler = new RegistrationHandler(
-                    registration,
-                    schemaRegistryClient,
-                    requestResponseHandler);
+            final RegistrationHandler<?, ?> handler = (registration instanceof Schemas.ResourceRegistration rcsRegistration)
+                    ? new ResourceHandler(rcsRegistration, schemaRegistryClient, requestResponseHandler)
+                    : new ToolHandler(registration, schemaRegistryClient, requestResponseHandler);
 
             handler.register(mcpServer)
                     .doOnSuccess(v -> {
@@ -173,7 +145,7 @@ public class RegistrationCoordinator {
      * @param registrationName The registration name
      */
     private void unregisterHandler(String registrationName) {
-        final RegistrationHandler handler = handlers.get(registrationName);
+        final RegistrationHandler<?, ?> handler = handlers.get(registrationName);
         handler.unregister(mcpServer)
                 .doOnSuccess(v -> {
                     log.info("Removed tool registration: {}", registrationName);
@@ -181,5 +153,10 @@ public class RegistrationCoordinator {
                 })
                 .doOnError(e -> log.error("Error removing tool registration: {}", registrationName, e))
                 .block();
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        registrationService.close();
     }
 }
