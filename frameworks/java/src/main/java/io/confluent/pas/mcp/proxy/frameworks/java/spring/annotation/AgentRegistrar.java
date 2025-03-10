@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.ApplicationContext;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.*;
 
@@ -94,7 +93,7 @@ public class AgentRegistrar implements InitializingBean, Closeable {
      * @return Subscription handler for the method
      */
     @NotNull
-    private SubscriptionHandler<? extends Key, ?, ?> getSubscriptionHandler(Method method, Resource resource, Object bean) {
+    private SubscriptionHandler<?, ?, ?> getSubscriptionHandler(Method method, Resource resource, Object bean) {
         log.info("Found resource {} on method {}", resource.name(), method.getName());
 
         // Create registration info for the agent
@@ -103,12 +102,11 @@ public class AgentRegistrar implements InitializingBean, Closeable {
                 resource.description(),
                 resource.request_topic(),
                 resource.response_topic(),
-                resource.correlationId(),
                 resource.contentType(),
                 resource.path());
 
         // Create and start a subscription handler for the resource
-        final SubscriptionHandler<? extends Key, ?, ? extends Schemas.ResourceResponse> subscriptionHandler = new SubscriptionHandler<>(
+        final SubscriptionHandler<?, ?, ? extends Schemas.ResourceResponse> subscriptionHandler = new SubscriptionHandler<>(
                 kafkaConfiguration,
                 resource.keyClass(),
                 Schemas.ResourceRequest.class,
@@ -137,7 +135,7 @@ public class AgentRegistrar implements InitializingBean, Closeable {
      * @return Subscription handler for the method
      */
     @NotNull
-    private SubscriptionHandler<? extends Key, ?, ?> getSubscriptionHandler(Method method, Agent agent, Object bean) {
+    private SubscriptionHandler<?, ?, ?> getSubscriptionHandler(Method method, Agent agent, Object bean) {
         log.info("Found agent {} on method {}", agent.name(), method.getName());
 
         // Create registration info for the agent
@@ -145,11 +143,10 @@ public class AgentRegistrar implements InitializingBean, Closeable {
                 agent.name(),
                 agent.description(),
                 agent.request_topic(),
-                agent.response_topic(),
-                agent.correlationId());
+                agent.response_topic());
 
         // Create and start a subscription handler for the agent
-        final SubscriptionHandler<? extends Key, ?, ?> subscriptionHandler = new SubscriptionHandler<>(
+        final SubscriptionHandler<?, ?, ?> subscriptionHandler = new SubscriptionHandler<>(
                 kafkaConfiguration,
                 agent.keyClass(),
                 agent.requestClass(),
