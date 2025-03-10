@@ -4,10 +4,13 @@ import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.frameworks.java.SubscriptionHandler;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
+import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.AsyncMcpToolCallbackProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.context.ApplicationContext;
 
 import java.io.Closeable;
@@ -20,6 +23,7 @@ import java.util.*;
  */
 @Slf4j
 @AutoConfiguration
+@AutoConfigureOrder
 public class AgentRegistrar implements InitializingBean, Closeable {
     private static final String SELF_BEAN_NAME = AgentRegistrar.class.getSimpleName();
 
@@ -163,6 +167,7 @@ public class AgentRegistrar implements InitializingBean, Closeable {
                         throw new AgentInvocationException("Failed to invoke handler method", e);
                     }
                 });
+        
         return subscriptionHandler;
     }
 

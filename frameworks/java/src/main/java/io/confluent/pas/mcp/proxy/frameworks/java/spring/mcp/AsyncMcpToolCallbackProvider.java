@@ -47,6 +47,24 @@ public class AsyncMcpToolCallbackProvider extends McpToolFilters<AsyncMcpToolCal
     }
 
     /**
+     * Constructs a provider with a registration and a list of asynchronous MCP clients.
+     *
+     * @param clients List of asynchronous MCP clients
+     */
+    public AsyncMcpToolCallbackProvider(List<McpAsyncClient> clients) {
+        this.clients = clients;
+    }
+
+    /**
+     * Convenience constructor accepting variable arguments of asynchronous MCP clients.
+     *
+     * @param clients Variable number of asynchronous MCP clients
+     */
+    public AsyncMcpToolCallbackProvider(McpAsyncClient... clients) {
+        this.clients = List.of(clients);
+    }
+
+    /**
      * Retrieves tool callbacks from all registered asynchronous MCP clients.
      * Filters out self-referential tools based on registration name.
      * Uses reactive programming with blocking calls to retrieve the data.

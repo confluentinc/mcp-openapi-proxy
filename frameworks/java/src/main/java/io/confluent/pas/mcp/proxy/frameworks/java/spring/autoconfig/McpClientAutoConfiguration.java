@@ -1,5 +1,7 @@
 package io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig;
 
+import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.AsyncMcpToolCallbackProvider;
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.ResourcesChangeEvent;
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.ToolsChangeEvent;
 import io.modelcontextprotocol.client.McpAsyncClient;
@@ -11,8 +13,11 @@ import io.modelcontextprotocol.spec.ClientMcpTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureOrder;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,6 +36,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @AutoConfiguration
+@AutoConfigureOrder
 @ConditionalOnProperty(prefix = "mcp.client", name = "connection-string")
 public class McpClientAutoConfiguration {
 
@@ -57,6 +63,32 @@ public class McpClientAutoConfiguration {
      */
     @Value("${mcp.client.api.secret:#{null}}")
     private String apiSecret;
+
+    /**
+     * Comma-separated list of tool names to be denied access
+     */
+    @Value("${mcp.client.deny-tools:#{null}}")
+    private String deniedTools;
+
+    /**
+     * Creates a ToolCallbackProvider bean for handling MCP tool interactions.
+     * Configures tool access restrictions if deny-tools are specified.
+     *
+     * @param mcpAsyncClient Async MCP client instance
+     * @return Configured ToolCallbackProvider instance
+     */
+    @Bean
+    @ConditionalOnMissingBean()
+    public AsyncMcpToolCallbackProvider getToolCallbackProvider(McpAsyncClient mcpAsyncClient) {
+        final AsyncMcpToolCallbackProvider provider = new AsyncMcpToolCallbackProvider(mcpAsyncClient);
+
+        if (!StringUtils.isEmpty(deniedTools)) {
+            final List<String> tools = List.of(deniedTools.split(","));
+            return provider.denis(tools);
+        }
+
+        return provider;
+    }
 
     /**
      * Creates a Server-Sent Events (SSE) transport bean for MCP client.

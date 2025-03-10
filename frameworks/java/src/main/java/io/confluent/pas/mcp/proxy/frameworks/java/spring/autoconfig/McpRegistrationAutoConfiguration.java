@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -22,6 +23,7 @@ import java.util.List;
  */
 @Slf4j
 @AutoConfiguration
+@AutoConfigureOrder
 @ConditionalOnProperty(prefix = "agent", name = "name")
 public class McpRegistrationAutoConfiguration {
 
@@ -56,33 +58,6 @@ public class McpRegistrationAutoConfiguration {
     private String correlationIdFieldName;
 
     /**
-     * Comma-separated list of tool names to be denied access
-     */
-    @Value("${agent.deny-tools:#{null}}")
-    private String deniedTools;
-
-    /**
-     * Creates a ToolCallbackProvider bean for handling MCP tool interactions.
-     * Configures tool access restrictions if deny-tools are specified.
-     *
-     * @param registration   Registration configuration for the agent
-     * @param mcpAsyncClient Async MCP client instance
-     * @return Configured ToolCallbackProvider instance
-     */
-    @Bean
-    @ConditionalOnBean(McpAsyncClient.class)
-    public ToolCallbackProvider getToolCallbackProvider(Schemas.Registration registration, McpAsyncClient mcpAsyncClient) {
-        final AsyncMcpToolCallbackProvider provider = new AsyncMcpToolCallbackProvider(registration, mcpAsyncClient);
-
-        if (!StringUtils.isEmpty(deniedTools)) {
-            final List<String> tools = List.of(deniedTools.split(","));
-            return provider.denis(tools);
-        }
-
-        return provider;
-    }
-
-    /**
      * Creates a Registration bean with the agent's configuration.
      * Contains all necessary information for registering the agent in MCP.
      *
@@ -99,9 +74,4 @@ public class McpRegistrationAutoConfiguration {
                 .correlationIdFieldName(correlationIdFieldName)
                 .build();
     }
-
-//    @Bean
-//    public AgentRegistrar agentRegistrar(KafkaConfiguration kafkaConfiguration, ApplicationContext applicationContext) {
-//        return new AgentRegistrar(kafkaConfiguration, applicationContext);
-//    }
 }

@@ -35,6 +35,9 @@ class McpToolFilters<T extends McpToolFilters<T>> {
         deny(registration.getName());
     }
 
+    public McpToolFilters() {
+    }
+
     /**
      * Checks if a tool is allowed.
      *
