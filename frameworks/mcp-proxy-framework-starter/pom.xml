@@ -30,7 +30,7 @@
         </dependency>
         <dependency>
             <groupId>io.confluent.pas.mcp.proxy.frameworks</groupId>
-            <artifactId>java</artifactId>
+            <artifactId>mcp-proxy-framework</artifactId>
             <version>${mcp.proxy.version}</version>
         </dependency>
 

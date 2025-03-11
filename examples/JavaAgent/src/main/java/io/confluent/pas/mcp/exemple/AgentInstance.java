@@ -20,6 +20,12 @@ public class AgentInstance {
 
     private final Assistant assistant;
 
+    /**
+     * Constructor to initialize the AgentInstance with the necessary configuration.
+     *
+     * @param geminiKey    The API key for the Google AI Gemini model.
+     * @param systemPrompt The system prompt to be used by the assistant.
+     */
     @Autowired
     public AgentInstance(@Value("${model.gemini-key}") String geminiKey,
                          @Value("${model.system-prompt}") String systemPrompt) {

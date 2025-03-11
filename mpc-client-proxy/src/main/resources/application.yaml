@@ -1,6 +1,6 @@
 spring:
   application:
-    name: "PythonAgent"
+    name: "MCPProxyClient"
   main:
     banner-mode: off
     web-application-type: none
