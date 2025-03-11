@@ -14,6 +14,8 @@ import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.context.ApplicationContext;
 
 import java.io.Closeable;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.util.*;
 
@@ -117,17 +119,7 @@ public class AgentRegistrar implements InitializingBean, Closeable {
                 resource.responseClass());
 
         // Set up the message handling by invoking the annotated method
-        subscriptionHandler.subscribeWith(
-                registration,
-                (request) -> {
-                    try {
-                        method.invoke(bean, request);
-                    } catch (Exception e) {
-                        log.error("Failed to invoke handler method", e);
-                        throw new AgentInvocationException("Failed to invoke handler method", e);
-                    }
-                });
-        return subscriptionHandler;
+        return subscribe(method, bean, registration, subscriptionHandler);
     }
 
     /**
@@ -157,17 +149,35 @@ public class AgentRegistrar implements InitializingBean, Closeable {
                 agent.responseClass());
 
         // Set up the message handling by invoking the annotated method
+        return subscribe(method, bean, registration, subscriptionHandler);
+    }
+
+    /**
+     * Subscribes the given method to the subscription handler.
+     *
+     * @param method              Method to subscribe
+     * @param bean                Bean containing the method
+     * @param registration        Registration info for the method
+     * @param subscriptionHandler Subscription handler to subscribe to
+     * @return Subscription handler with the method subscribed
+     */
+    @NotNull
+    private SubscriptionHandler<?, ?, ?> subscribe(Method method,
+                                                   Object bean,
+                                                   Schemas.Registration registration, SubscriptionHandler<?, ?, ?> subscriptionHandler) {
         subscriptionHandler.subscribeWith(
                 registration,
                 (request) -> {
                     try {
-                        method.invoke(bean, request);
-                    } catch (Exception e) {
-                        log.error("Failed to invoke handler method", e);
+                        MethodHandles.Lookup lookup = MethodHandles.lookup();
+                        MethodHandle methodHandle = lookup.unreflect(method).bindTo(bean);
+                        methodHandle.invoke(request);
+                    } catch (Throwable e) {
+                        log.error("Failed to invoke handler method via MethodHandles", e);
                         throw new AgentInvocationException("Failed to invoke handler method", e);
                     }
                 });
-        
+
         return subscriptionHandler;
     }
 
