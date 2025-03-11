@@ -16,9 +16,9 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>java</module>
+        <module>mcp-proxy-framework</module>
         <module>mpc-client-proxy</module>
-        <module>mcp-framework-starter</module>
+        <module>mcp-proxy-framework-starter</module>
     </modules>
 
 </project>

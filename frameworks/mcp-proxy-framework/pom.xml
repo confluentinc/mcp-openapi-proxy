@@ -11,7 +11,7 @@
     </parent>
 
     <groupId>io.confluent.pas.mcp.proxy.frameworks</groupId>
-    <artifactId>java</artifactId>
+    <artifactId>mcp-proxy-framework</artifactId>
     <name>Java Agent Frameworks</name>
 
     <properties>
