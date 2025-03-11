@@ -17,7 +17,6 @@
 
     <modules>
         <module>mcp-proxy-framework</module>
-        <module>mpc-client-proxy</module>
         <module>mcp-proxy-framework-starter</module>
     </modules>
 

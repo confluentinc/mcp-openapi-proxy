@@ -1,5 +1,7 @@
 # MCP Client Proxy
 
+[Back to Main README](../README.md)
+
 A Java-based proxy that exposes MCP (Model Context Protocol) servers as Kafka streaming applications. This tool bridges
 the gap between MCP servers and Kafka, allowing agents to discover and utilize tools/resources over Kafka.
 

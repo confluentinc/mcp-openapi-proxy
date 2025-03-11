@@ -10,7 +10,7 @@
     </parent>
 
     <groupId>io.confluent.pas.mcp</groupId>
-    <artifactId>proxy</artifactId>
+    <artifactId>mcp-proxy</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>Confluent MCP/OpenAPI Proxy</name>
     <description>This module provides a proxy for the MCP (Model Context Protocol) framework, enabling seamless
