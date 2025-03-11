@@ -27,6 +27,26 @@ public class AgentConfiguration {
         private String name;
         @JsonProperty("output_schema")
         private JsonSchema output_schema;
+        @JsonProperty(value = "request_topic", defaultValue = "")
+        private String request_topic;
+        @JsonProperty(value = "response_topic", defaultValue = "")
+        private String response_topic;
+
+        public String getRequest_topic() {
+            if (request_topic == null || request_topic.isEmpty()) {
+                return name + "_request";
+            }
+
+            return request_topic;
+        }
+
+        public String getResponse_topic() {
+            if (response_topic == null || response_topic.isEmpty()) {
+                return name + "_response";
+            }
+
+            return response_topic;
+        }
 
         public void setOutput_schema(String output_schema) {
             this.output_schema = new JsonSchema(output_schema);
@@ -71,8 +91,6 @@ public class AgentConfiguration {
         } else {
             throw new ConfigurationException("Unsupported configuration file format: " + filePath);
         }
-
-
     }
 
     private static AgentConfiguration parseJsonConfiguration(File file, String filePath) throws ConfigurationException {

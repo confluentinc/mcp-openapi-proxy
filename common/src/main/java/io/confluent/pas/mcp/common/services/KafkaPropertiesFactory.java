@@ -12,6 +12,7 @@ import io.kcache.KafkaCacheConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.Serdes;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +27,20 @@ import java.util.Properties;
 public class KafkaPropertiesFactory {
 
     /**
+     * Creates properties for Kafka Streams with default key and value serdes.
+     *
+     * @param configration The Kafka configuration containing connection and auth details
+     * @return Properties configured for Kafka Streams
+     */
+    public static Properties getKStreamsProperties(KafkaConfiguration configration) {
+        Properties properties = getDefaultProperties(configration, "");
+        properties.put("application.id", configration.applicationId());
+        properties.put("default.key.serde", Serdes.ByteArraySerde.class);
+        properties.put("default.value.serde", Serdes.ByteArraySerde.class);
+        return properties;
+    }
+
+    /**
      * Creates a Schema Registry client with JSON and Avro schema support.
      *
      * @param configration The Kafka configuration containing connection and auth details
@@ -38,6 +53,24 @@ public class KafkaPropertiesFactory {
                 List.of(new JsonSchemaProvider(), new AvroSchemaProvider()),
                 getSchemaRegistryConfig(configration),
                 new HashMap<>());
+    }
+
+    /**
+     * Creates Schema Registry configuration with authentication settings.
+     *
+     * @param kafkaConfiguration The Kafka configuration containing Schema Registry details
+     * @param valueType          Class type for value deserialization
+     * @param isKey              True if it is a configuration for key deserialization
+     * @return Map of Schema Registry configuration properties
+     */
+    public static Map<String, Object> getSchemaRegistryConfig(KafkaConfiguration kafkaConfiguration, Class<?> valueType, boolean isKey) {
+        Map<String, Object> config = getSchemaRegistryConfig(kafkaConfiguration);
+        if (isKey) {
+            config.put(KafkaJsonSchemaDeserializerConfig.JSON_KEY_TYPE, valueType.getName());
+        } else {
+            config.put(KafkaJsonSchemaDeserializerConfig.JSON_VALUE_TYPE, valueType.getName());
+        }
+        return config;
     }
 
     /**

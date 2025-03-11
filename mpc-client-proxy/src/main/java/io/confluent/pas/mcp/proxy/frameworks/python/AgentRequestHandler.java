@@ -1,4 +1,3 @@
-// AgentRequestHandler.java
 package io.confluent.pas.mcp.proxy.frameworks.python;
 
 import com.fasterxml.jackson.core.JsonProcessingException;

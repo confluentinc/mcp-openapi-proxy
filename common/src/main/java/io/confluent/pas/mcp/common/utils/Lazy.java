@@ -8,7 +8,7 @@ import java.util.function.Supplier;
  *
  * @param <T> The type of object that is being lazily initialized.
  */
-public class Lazy<T> implements Supplier<T> {
+public class Lazy<T> implements Supplier<T>, AutoCloseable {
     private T instance;
     private final Supplier<T> supplier;
 
@@ -42,5 +42,12 @@ public class Lazy<T> implements Supplier<T> {
      */
     public boolean isInitialized() {
         return instance != null;
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (instance != null && instance instanceof AutoCloseable) {
+            ((AutoCloseable) instance).close();
+        }
     }
 }

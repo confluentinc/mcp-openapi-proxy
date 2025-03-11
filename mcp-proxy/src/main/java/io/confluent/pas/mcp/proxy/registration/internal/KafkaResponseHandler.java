@@ -1,6 +1,6 @@
 package io.confluent.pas.mcp.proxy.registration.internal;
 
-import io.confluent.pas.mcp.common.services.ConsumerService;
+import io.confluent.pas.mcp.proxy.registration.kafka.ConsumerService;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.common.utils.AutoReadWriteLock;

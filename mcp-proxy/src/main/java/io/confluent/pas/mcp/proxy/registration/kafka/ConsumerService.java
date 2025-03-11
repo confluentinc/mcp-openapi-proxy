@@ -1,12 +1,13 @@
-package io.confluent.pas.mcp.common.services;
+package io.confluent.pas.mcp.proxy.registration.kafka;
 
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
+import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
 import io.confluent.pas.mcp.common.utils.AutoReadWriteLock;
 import io.confluent.pas.mcp.common.utils.Lazy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;

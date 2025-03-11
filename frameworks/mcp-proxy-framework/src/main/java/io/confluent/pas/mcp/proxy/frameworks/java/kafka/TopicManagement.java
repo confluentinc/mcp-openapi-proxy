@@ -13,6 +13,7 @@ import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.errors.TopicExistsException;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
@@ -22,7 +23,7 @@ import java.util.concurrent.TimeoutException;
 
 
 @Slf4j
-public class TopicManagement {
+public class TopicManagement implements AutoCloseable {
 
     private final Lazy<AdminClient> kafkaAdminClient = new Lazy<>(this::getNewKafkaAdminClient);
     private final KafkaConfiguration kafkaConfigration;
@@ -143,5 +144,13 @@ public class TopicManagement {
 
     private AdminClient getNewKafkaAdminClient() {
         return KafkaAdminClient.create(KafkaPropertiesFactory.getAdminConfig(kafkaConfigration));
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (schemaRegistryClient != null) {
+            schemaRegistryClient.close();
+        }
+        kafkaAdminClient.close();
     }
 }

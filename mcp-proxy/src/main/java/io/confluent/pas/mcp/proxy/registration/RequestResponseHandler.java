@@ -2,7 +2,7 @@ package io.confluent.pas.mcp.proxy.registration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
-import io.confluent.pas.mcp.common.services.ProducerService;
+import io.confluent.pas.mcp.proxy.registration.kafka.ProducerService;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.internal.KafkaResponseHandler;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
