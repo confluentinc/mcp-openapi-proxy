@@ -4,14 +4,15 @@
 
 ## Overview
 
-This framework accelerates the development of **MCP/OpenAPI Agents** in Java. It provides built-in support for **agent
-registration** and **subscription to request topics**, simplifying agent lifecycle management and interaction with Kafka
-topics.
+This framework accelerates the development of **MCP/OpenAPI Agents** in Java. It simplifies agent lifecycle management
+and Kafka topic interactions by using custom annotations like `@Agent` and `@Resource` for automatic registration and
+handling.
 
 ## Features
 
-- **Automatic Agent Registration**: Ensures agents are registered in MCP/OpenAPI.
-- **Subscription Handling**: Automatically subscribes agents to request topics and processes responses.
+- **`@Agent` Annotation**: Simplifies agent registration and request handling.
+- **`@Resource` Annotation**: Automatically registers resources to the server and handles requests based on URI paths.
+- **Spring Auto-Configuration**: Automatically configures beans based on dependencies and settings.
 - **Kafka Integration**: Manages Kafka consumers and producers efficiently.
 - **Topic Management**: Ensures necessary topics are created dynamically.
 
@@ -30,112 +31,172 @@ topics.
                                                                    +---------------------------+
 ```
 
-## Prerequisites
+---
 
-- Java 21+
-- Maven
-- Confluent Cloud account (Kafka & Schema Registry configured)
+## Spring Auto-Configuration Support
 
-## Installation
+This framework provides auto-configuration support for Spring-based applications, simplifying the setup by automatically
+configuring beans for Kafka integration, agent registration, and subscription handling based on the configuration files.
 
-Clone the repository:
+### Minimal Configuration Example for Applications
 
-```sh
-git clone https://...
-cd mcp-openapi-proxy
+Here’s an example of how an application using this framework can define a minimal `application.yml` configuration:
+
+```yaml
+spring:
+  config:
+    activate:
+      on-profile: "default"
+  application:
+    name: "JavaAgent"
+  main:
+    web-application-type: none
+
+kafka:
+  application-id: "tool_agent"
+  broker-servers: ${BROKER_URL}
+  jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
+  sr-url: ${SR_URL}
+  sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
 ```
 
-Build the project:
+---
 
-```sh
-mvn clean install
-```
+## Core Concepts: `@Agent` and `@Resource` Annotations
 
-## Core Class: SubscriptionHandler
+### `@Agent` Annotation
 
-The `SubscriptionHandler` class manages agent **registration** and **subscriptions** to request topics.
+The `@Agent` annotation is the core feature for defining agents that automatically register and handle requests.
+
+**Example Usage:**
 
 ```java
-public class SubscriptionHandler<K extends Key, REQ, RES> {
 
-    public interface RequestHandler<K, REQ, RES> {
-        void onRequest(Request<K, REQ, RES> request);
+@Slf4j
+@Component
+public class AgentInstance {
+    private final Assistant assistant;
+
+    @Autowired
+    public AgentInstance(@Value("${model.gemini-key}") String geminiKey,
+                         @Value("${model.system-prompt}") String systemPrompt) {
+        final ChatLanguageModel chatLanguageModel = GoogleAiGeminiChatModel.builder()
+                .apiKey(geminiKey)
+                .modelName("gemini-2.0-flash")
+                .build();
+
+        assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .systemMessageProvider((val) -> systemPrompt)
+                .build();
     }
 
-    private final RegistrationService<RegistrationKey, Registration> registrationService;
-    private final ProducerService<K, RES> responseService;
-    private final ConsumerService<K, REQ> requestService;
-    private final TopicManagement topicManagement;
-    private final Class<K> keyClass;
-    private final Class<REQ> requestClass;
-    private final Class<RES> responseClass;
-
-    public SubscriptionHandler(String applicationId,
-                               TopicManagement topicManagement,
-                               KafkaConfigration kafkaConfigration,
-                               String registrationTopic,
-                               Class<K> keyClass,
-                               Class<REQ> requestClass,
-                               Class<RES> responseClass) {
-        this.topicManagement = topicManagement;
-        this.responseService = new ProducerService<>(applicationId, kafkaConfigration);
-        this.requestService = new ConsumerService<>(applicationId, kafkaConfigration, keyClass, requestClass);
-        this.registrationService = new RegistrationService<>(
-                applicationId, kafkaConfigration, RegistrationKey.class, Registration.class, registrationTopic, false);
-        this.keyClass = keyClass;
-        this.requestClass = requestClass;
-        this.responseClass = responseClass;
-    }
-
-    public void start() {
-        registrationService.start();
-    }
-
-    public void stop() {
-        requestService.stop();
-    }
-
-    public void subscribeWith(Registration registration, RequestHandler<K, REQ, RES> handler) throws SubscriptionException {
-        log.info("Subscribing for registration: {}", registration.getName());
-
-        final RegistrationKey registrationKey = new RegistrationKey(registration.getName());
-        if (!registrationService.isRegistered(registrationKey)) {
-            try {
-                topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestClass);
-                topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseClass);
-            } catch (Exception e) {
-                log.error("Failed to create topic", e);
-                throw new SubscriptionException("Failed to create topic", e);
-            }
-            log.info("Registering: {}", registration.getName());
-            registrationService.register(registrationKey, registration);
-        } else {
-            log.info("Already registered: {}", registration.getName());
-        }
-
-        requestService.subscribeForEvent(
-                registration.getRequestTopicName(),
-                (topic, key, request) -> {
-                    final Request<K, REQ, RES> requestWrapper = new Request<>(key, request, registration, responseService);
-                    handler.onRequest(requestWrapper);
-                });
+    @Agent(
+            name = "sample_java_agent",
+            description = "A sample Java agent that performs sentiment analysis using the Google AI Gemini model.",
+            request_topic = "sample_java_agent_request",
+            response_topic = "sample_java_agent_response",
+            requestClass = AgentQuery.class,
+            responseClass = AgentResponse.class
+    )
+    public void onRequest(Request<Key, AgentQuery, AgentResponse> request) {
+        log.info("Received request: {}", request.getRequest().query());
+        final String response = assistant.chat(request.getRequest().query());
+        request.respond(new AgentResponse(response))
+                .doOnError(e -> log.error("Failed to respond", e))
+                .block();
     }
 }
 ```
 
-## Registering an Agent
+---
 
-Agents are automatically registered in MCP/OpenAPI when calling:
+### `@Resource` Annotation
+
+The `@Resource` annotation is used to automatically register resources to the server and handle incoming requests based
+on specified URIs. Resources are delivered dynamically based on the URI patterns.
+
+**Sample Application Delivering Resources:**
 
 ```java
-subscriptionHandler.subscribeWith(registration, this::onRequest);
+/**
+ * Agent class responsible for delivering resources.
+ */
+@Slf4j
+@Component
+public class ResourceAgent {
+    private final static String URI = "client/{client_id}";
+    private final static String MIME_TYPE = "application/json";
+
+    private final UriTemplate template;
+
+    /**
+     * Constructor to initialize the ResourceAgent with required dependencies.
+     */
+    public ResourceAgent() {
+        this.template = new UriTemplate(URI);
+    }
+
+    /**
+     * Handles incoming requests by processing the query and responding with a message.
+     *
+     * @param request The incoming request containing the query.
+     */
+    @Resource(
+            name = "resource-agent--rcs",
+            description = "This agent returns resources.",
+            request_topic = "resource-request",
+            response_topic = "resource-response",
+            contentType = MIME_TYPE,
+            path = URI,
+            responseClass = Schemas.TextResourceResponse.class
+    )
+    public void onRequest(Request<Key, Schemas.ResourceRequest, Schemas.TextResourceResponse> request) {
+        log.info("Received request: {}", request.getRequest().getUri());
+
+        // Extract values from the URI using the template
+        final Map<String, Object> values = this.template.match(request.getRequest().getUri());
+
+        // Respond to the request with a message containing the client_id
+        request.respond(new Schemas.TextResourceResponse(
+                        request.getRequest().getUri(),
+                        MIME_TYPE,
+                        "{ \"message\": \"Hello, " + values.get("client_id") + "!\" }"
+                ))
+                .doOnError(e -> log.error("Failed to respond to request", e))
+                .block();
+    }
+}
 ```
+
+---
+
+### Key Features of `@Resource` Annotation
+
+- **Automatic Registration:** Registers the resource with the specified properties at startup.
+- **URI-Based Handling:** Dynamically handles requests based on URI patterns.
+- **Method Binding:** Must be paired with a method that processes incoming requests.
+
+---
+
+## Registering Agents and Resources
+
+- Use `@Agent` for registering agents that handle complex requests and responses via Kafka topics.
+- Use `@Resource` for serving static or dynamic resources based on URI patterns.
+
+---
 
 ## Conclusion
 
-This framework streamlines the development of **MCP/OpenAPI Agents** in Java, handling **registration**, **subscriptions
-**, and **Kafka topic management**. By leveraging this framework, developers can focus on their agent’s business logic
-without worrying about infrastructure setup.
+This framework streamlines the development of **MCP/OpenAPI Agents** in Java by providing:
+
+- **`@Agent` Annotation** for agent registration and request handling.
+- **`@Resource` Annotation** for dynamic resource delivery.
+- **Spring Auto-Configuration** to reduce boilerplate code.
+- **Efficient Kafka Integration** for seamless communication.
+
+By leveraging this framework, developers can focus on business logic without worrying about configuration and
+infrastructure.
 
 ## Contributing
 
