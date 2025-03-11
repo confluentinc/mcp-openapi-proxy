@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.common.services;
+package io.confluent.pas.mcp.proxy.registration.kafka;
 
 /**
  * Consumer Service Handler interface.

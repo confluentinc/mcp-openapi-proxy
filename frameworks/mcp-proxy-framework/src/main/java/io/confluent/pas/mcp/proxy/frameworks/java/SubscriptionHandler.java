@@ -1,17 +1,23 @@
 package io.confluent.pas.mcp.proxy.frameworks.java;
 
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
-import io.confluent.pas.mcp.common.services.ConsumerService;
-import io.confluent.pas.mcp.common.services.ProducerService;
-import io.confluent.pas.mcp.common.services.RegistrationService;
-import io.confluent.pas.mcp.common.services.Schemas;
-import io.confluent.pas.mcp.common.services.KafkaConfiguration;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
+import io.confluent.pas.mcp.common.services.*;
 import io.confluent.pas.mcp.proxy.frameworks.java.kafka.TopicManagement;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.Produced;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * SubscriptionHandler class that handles the subscription to a registration.
@@ -36,13 +42,16 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
         void onRequest(Request<K, REQ, RES> request);
     }
 
+    private final KafkaConfiguration kafkaConfigration;
     private final RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService;
-    private final ProducerService<K, RES> responseService;
-    private final ConsumerService<K, REQ> requestService;
     private final TopicManagement topicManagement;
     private final Class<K> keyClass;
     private final Class<REQ> requestClass;
     private final Class<RES> responseClass;
+    private KafkaStreams kafkaStreams;
+    private final Serdes.WrapperSerde<K> keySerde;
+    private final Serdes.WrapperSerde<REQ> reqWrapperSerde;
+    private final Serdes.WrapperSerde<RES> resWrapperSerde;
 
     /**
      * Constructor for SubscriptionHandler.
@@ -56,14 +65,8 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
                                Class<K> keyClass,
                                Class<REQ> requestClass,
                                Class<RES> responseClass) {
+        this.kafkaConfigration = kafkaConfigration;
         this.topicManagement = new TopicManagement(kafkaConfigration);
-        this.responseService = new ProducerService<>(kafkaConfigration);
-
-        this.requestService = new ConsumerService<>(
-                kafkaConfigration,
-                keyClass,
-                requestClass);
-
         this.registrationService = new RegistrationService<>(
                 kafkaConfigration,
                 Schemas.RegistrationKey.class,
@@ -72,13 +75,18 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
         this.keyClass = keyClass;
         this.requestClass = requestClass;
         this.responseClass = responseClass;
+
+        this.keySerde = getSerdes(keyClass, true);
+        this.reqWrapperSerde = getSerdes(requestClass, false);
+        this.resWrapperSerde = getSerdes(responseClass, false);
     }
 
     @Override
     public void close() {
         registrationService.close();
-        requestService.close();
-        responseService.close();
+        if (kafkaStreams != null) {
+            kafkaStreams.close();
+        }
     }
 
     /**
@@ -131,6 +139,17 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
         subscribe(registration, handler);
     }
 
+    private <VALUE> Serdes.WrapperSerde<VALUE> getSerdes(Class<VALUE> value, boolean isKey) {
+        final Map<String, Object> configuration = KafkaPropertiesFactory.getSchemaRegistryConfig(kafkaConfigration, value, isKey);
+        final Serdes.WrapperSerde<VALUE> serde = new Serdes.WrapperSerde<>(
+                new KafkaJsonSchemaSerializer<>(),
+                new KafkaJsonSchemaDeserializer<>());
+
+        serde.configure(configuration, isKey);
+
+        return serde;
+    }
+
     private void subscribe(Schemas.Registration registration, RequestHandler<K, REQ, RES> handler) {
         // Register the capability
         final Schemas.RegistrationKey registrationKey = new Schemas.RegistrationKey(registration.getName());
@@ -141,16 +160,16 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
             log.info("Already registered: {}", registration.getName());
         }
 
-        // Add subscription to the request service
-        requestService.subscribeForEvent(
-                registration.getRequestTopicName(),
-                (topic, key, request) -> {
-                    final Request<K, REQ, RES> requestWrapper = new Request<>(
-                            key,
-                            request,
-                            registration,
-                            responseService);
-                    handler.onRequest(requestWrapper);
-                });
+
+        // Build the KStream topology
+        StreamsBuilder builder = new StreamsBuilder();
+
+        builder.stream(registration.getRequestTopicName(), Consumed.with(keySerde, reqWrapperSerde))
+                .process(new SubscriptionHandlerSupplier<>(handler, registration))
+                .to(registration.getResponseTopicName(), Produced.with(keySerde, resWrapperSerde));
+
+        final Topology topology = builder.build();
+        kafkaStreams = new KafkaStreams(topology, KafkaPropertiesFactory.getKStreamsProperties(kafkaConfigration));
+        kafkaStreams.start();
     }
 }

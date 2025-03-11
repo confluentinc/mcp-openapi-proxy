@@ -1,5 +1,7 @@
-package io.confluent.pas.mcp.common.services;
+package io.confluent.pas.mcp.proxy.registration.kafka;
 
+import io.confluent.pas.mcp.common.services.KafkaConfiguration;
+import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
 import io.confluent.pas.mcp.common.utils.Lazy;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +10,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import reactor.core.publisher.Mono;
 
 import java.io.Closeable;
-import java.io.IOException;
 
 /**
  * ProducerService class that handles sending messages to Kafka topics.

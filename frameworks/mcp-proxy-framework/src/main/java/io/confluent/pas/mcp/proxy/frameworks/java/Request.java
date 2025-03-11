@@ -1,10 +1,11 @@
 package io.confluent.pas.mcp.proxy.frameworks.java;
 
-import io.confluent.pas.mcp.common.services.Schemas;
-import io.confluent.pas.mcp.common.services.ProducerService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
+
+import java.util.function.Consumer;
 
 /**
  * Request class that holds the key and the request object
@@ -13,14 +14,14 @@ import reactor.core.publisher.Mono;
  * @param <REQ> Request type
  * @param <RES> Response type
  */
+@Slf4j
 @AllArgsConstructor
 public class Request<K, REQ, RES> {
     @Getter
     private final K key;
     @Getter
     private final REQ request;
-    private final Schemas.Registration registration;
-    private final ProducerService<K, RES> responseService;
+    private final Consumer<Response<K, RES>> responseConsumer;
 
     /**
      * Respond to the request
@@ -28,10 +29,15 @@ public class Request<K, REQ, RES> {
      * @param response Response object
      */
     public Mono<Void> respond(Response<K, RES> response) {
-        return responseService.send(
-                registration.getResponseTopicName(),
-                response.key(),
-                response.response());
+        return Mono.create(sink -> {
+            try {
+                responseConsumer.accept(response);
+                sink.success();
+            } catch (Exception e) {
+                log.error("Error responding to request", e);
+                sink.error(e);
+            }
+        });
     }
 
     /**
@@ -40,9 +46,6 @@ public class Request<K, REQ, RES> {
      * @param response Response object
      */
     public Mono<Void> respond(RES response) {
-        return responseService.send(
-                registration.getResponseTopicName(),
-                key,
-                response);
+        return this.respond(new Response<>(key, response));
     }
 }

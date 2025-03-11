@@ -17,6 +17,8 @@
     <properties>
         <jsonschema-generator.version>4.37.0</jsonschema-generator.version>
         <spring-ai.version>1.0.0-M6</spring-ai.version>
+        <kstream.version>3.9.0</kstream.version>
+
     </properties>
 
     <dependencyManagement>
@@ -45,6 +47,13 @@
             <groupId>com.github.victools</groupId>
             <artifactId>jsonschema-generator</artifactId>
             <version>${jsonschema-generator.version}</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka-streams -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-streams</artifactId>
+            <version>${kstream.version}</version>
         </dependency>
 
         <dependency>
