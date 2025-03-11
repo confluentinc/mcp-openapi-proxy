@@ -1,174 +1,88 @@
-# Java-Based Sentiment Analysis Agent
+# Sentiment Analysis Agent Application
 
 [Back to Main README](../../README.md)
 
 ## Overview
 
-This sample demonstrates how to build a **Java-based sentiment analysis agent** that processes incoming requests,
-performs sentiment classification, and exposes the results via the **MCP/OpenAPI Proxy**. This enables seamless
-integration with other agents or applications.
+This sample application demonstrates an agent specialized in sentiment analysis built on the MCP/OpenAPI Java Agent
+Framework. It emphasizes the use of the `@Agent` annotation, clearly defining Kafka request/response topics and
+request/response classes for straightforward integration.
 
 ## Architecture
 
+The architecture leverages annotations for automatic agent registration and simplified Kafka interactions:
+
 ```
- +-------------------+        +----------------------------+        +-------------------+
- |  Incoming Request | -----> |  MCP/OpenAPI Proxy         | -----> | Java Sentiment    |
- |   (MCP Client)    |        |  (Exposes Java Agent)      |        | Analysis Agent    |
- +-------------------+        +----------------------------+        +-------------------+
-                                                                        |
-                                                                        v
-                                                        +----------------------------+
-                                                        |  MCP/OpenAPI Proxy         |
-                                                        |  (Responds to Query)       |
-                                                        +----------------------------+
-```
-
-## Prerequisites
-
-- Java 21+
-- Maven
-- Confluent Cloud account (with Kafka topics and Schema Registry configured)
-
-## Installation
-
-Clone the repository:
-
-```sh
-git clone https://...
-cd mcp-openapi-proxy
++----------------------+          +---------------------------+          +------------------------------+
+|   Incoming Request   | -------> | MCP/OpenAPI Proxy         | <------- | Kafka Response Topic         |
+|   (MCP Client)       |          | (Routes via @Agent info)  |          | sentiment-analysis-responses |
++----------------------+          +---------------------------+          +------------------------------+
+                                                 |                                      ^
+                                                 v                                      |
+                              +-----------------------------+        +--------------------------+
+                              | Kafka Request Topic         | ------>| Sentiment Analysis Agent |
+                              | sentiment-analysis-requests |        | (@Agent annotated class) |
+                              +-----------------------------+        +--------------------------+
 ```
 
-Build the project:
+## Main Class (`AgentInstance.java`)
 
-```sh
-mvn clean install
-```
+The main agent logic is encapsulated within the `AgentInstance.java` class. This class is explicitly annotated with
+`@Agent` for integration into the MCP/OpenAPI Proxy.
 
-## Running the Agent
-
-Start the Java-based sentiment analysis agent:
-
-```sh
-java -jar ./exemples/JavaAgent/target/JavaAgent-0.0.1-SNAPSHOT.jar
-```
-
-## Configuration
-
-The agent requires the following environment variables:
-
-### Required Environment Variables
-
-- `BROKER_URL` - Confluent Cloud broker URL
-- `JAAS_USERNAME` - Authentication username
-- `JAAS_PASSWORD` - Authentication password
-- `SR_URL` - Schema Registry URL
-- `SR_API_KEY` - Schema Registry API key
-- `SR_API_SECRET` - Schema Registry API secret
-- `GEMINI_API_KEY` - API key for accessing Gemini model
-
-## Java Implementation
-
-### Core Agent Implementation
-
-The main Java class that processes incoming sentiment analysis requests and integrates with the Gemini model:
+### `@Agent` Annotation Explained
 
 ```java
-
-/**
- * Agent class responsible for handling sentiment analysis requests.
- */
-@Slf4j
-@Component
-public class Agent {
-
-    @Value("${model.gemini-key}")
-    private String geminiKey;
-
-    @Value("${model.system-prompt}")
-    private String systemPrompt;
-
-    private final SubscriptionHandler<Key, AgentQuery, AgentResponse> subscriptionHandler;
-    private final Registration registration;
-    private Assistant assistant;
-
-    @Autowired
-    public Agent(SubscriptionHandler<Key, AgentQuery, AgentResponse> subscriptionHandler,
-                 Registration registration) {
-        this.subscriptionHandler = subscriptionHandler;
-        this.registration = registration;
-    }
-
-    /**
-     * Initializes the agent by starting the subscription handler and setting up the assistant.
-     */
-    @PostConstruct
-    public void init() {
-        // Start the subscription handler
-        subscriptionHandler.start();
-
-        // Subscribe using the registration information and handle requests with the onRequest method
-        subscriptionHandler.subscribeWith(registration, this::onRequest);
-
-        // Create a ChatLanguageModel using the Google AI Gemini model
-        final ChatLanguageModel chatLanguageModel = GoogleAiGeminiChatModel.builder()
-                .apiKey(geminiKey)
-                .modelName("gemini-2.0-flash")
-                .build();
-
-        // Build the assistant using the AI services
-        assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .systemMessageProvider((val) -> systemPrompt)
-                .build();
-    }
-
-    /**
-     * Cleans up resources by stopping the subscription handler.
-     */
-    @PreDestroy
-    public void destroy() {
-        // Stop the subscription handler
-        subscriptionHandler.stop();
-    }
-
-    /**
-     * Handles incoming requests by processing the query and responding with the sentiment analysis result.
-     *
-     * @param request The incoming request containing the query.
-     */
-    private void onRequest(Request<Key, AgentQuery, AgentResponse> request) {
-        log.info("Received request: {}", request.getRequest().query());
-
-        // Process the query using the assistant and get the response
-        final String response = assistant.chat(request.getRequest().query());
-
-        // Respond to the request with the sentiment analysis result
-        request.respond(new AgentResponse(response))
-                .doOnError(e -> log.error("Failed to respond", e))
-                .block();
-    }
-}
-
+@Agent(
+        name = "sample_java_agent",
+        description = "A sample Java agent specialized in sentiment analysis",
+        requestTopic = "sentiment-analysis-requests",
+        responseTopic = "sentiment-analysis-responses",
+        requestClass = Request.class,
+        responseClass = SentimentResponse.class
+)
 ```
 
-The agent is registered when calling the `subscriptionHandler.subscribe(registration, this::onRequest);` method. The *
-*registration** is injected using Spring Boot's autowiring capability, and it defines the agent's metadata and
-associated topics.
+- **name**: Uniquely identifies the agent instance.
+- **description**: Clarifies the agent's purpose.
+- **requestTopic**: Kafka topic subscribed by the agent for receiving requests.
+- **responseTopic**: Kafka topic used to publish sentiment analysis results.
+- **requestClass**: The structure used for incoming requests.
+- **responseClass**: The class used for structured responses.
 
-#### Registration Bean Definition
+## Request/Response Classes
+
+**Request.java**
 
 ```java
+public class Request {
+    private String query;
 
-@Bean
-public Registration registration() {
-    return new Registration(
-            applicationId,
-            "This agent returns sentiments of a human request.",
-            requestTopic,
-            responseTopic);
+    // Getter and Setter
 }
-
 ```
+
+**SentimentResponse.java**
+
+```java
+public class SentimentResponse {
+    private String sentiment;
+
+    public SentimentResponse(String sentiment) {
+        this.sentiment = sentiment;
+    }
+
+    // Getter and Setter
+}
+```
+
+## Kafka Topics
+
+- **Request Topic**: `sentiment-analysis-requests`  
+  Consumed by the agent to perform sentiment analysis.
+
+- **Response Topic**: `sentiment-analysis-responses`  
+  Used for publishing analysis results.
 
 ## Demo Execution
 
@@ -215,6 +129,11 @@ User: exit
 Conversation ended
 shell:> exit
 ```
+
+## Summary
+
+By clearly defining the agent’s configuration through the `@Agent` annotation, the framework simplifies Kafka
+interactions, enabling efficient sentiment analysis request handling within an MCP/OpenAPI ecosystem.
 
 ## Conclusion
 
