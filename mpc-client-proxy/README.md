@@ -148,6 +148,8 @@ arguments:
 # Tool registration information
 tool:
   name: "<tool_name>"
+  request_topic: "<request_topic_name>"   # Optional, defaults to "<tool_name>_request"
+  response_topic: "<response_topic_name>" # Optional, defaults to "<tool_name>_response"
   output_schema: "<JSON schema string>"
   # Additional tool properties as needed
 ```
@@ -167,6 +169,8 @@ arguments:
   - "/Users/pascal/projects/oss/mcp-openapi-proxy/examples/python/server.py"
 tool:
   name: "add"
+  request_topic: "override_request_topic"   # Optional, defaults to "<tool_name>_request"
+  response_topic: "override_response_topic" # Optional, defaults to "<tool_name>_response"
   output_schema: "
 {
    \"properties\":{

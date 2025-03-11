@@ -8,6 +8,8 @@ arguments:
   - "/Users/pascal/projects/oss/mcp-openapi-proxy/examples/python/server.py"
 tool:
   name: "add"
+  #  request_topic: "a_request_topic"
+  #  response_topic: "a_response_topic"
   output_schema: "
 {
    \"properties\":{

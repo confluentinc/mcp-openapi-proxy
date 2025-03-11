@@ -115,8 +115,8 @@ public class Agent {
         var registration = new Schemas.Registration(
                 handler.tool().name(),
                 handler.tool().description(),
-                handler.tool().name() + "_request",
-                handler.tool().name() + "_response");
+                agentConfiguration.getTool().getRequest_topic(),
+                agentConfiguration.getTool().getResponse_topic());
 
         this.subscriptionHandler = new SubscriptionHandler<>(
                 kafkaConfiguration,
