@@ -3,18 +3,26 @@
 [Back to Main README](../README.md)
 
 A Java-based proxy that exposes MCP (Model Context Protocol) servers as Kafka streaming applications. This tool bridges
-the gap between MCP servers and Kafka, allowing agents to discover and utilize tools/resources over Kafka.
+the gap between MCP servers and Kafka. It allows agents to discover and utilize tools and resources over Kafka.
 
 ## Overview
 
-The MCP Client Proxy is a command-line tool that:
+The MCP Client Proxy is a command-line tool designed to facilitate interaction between MCP servers and Kafka. It
+performs the following key functions:
 
-1. Connects to an MCP server (using Standard IO)
-2. Exposes the MCP server's functionality as a Kafka streaming application
-3. Automatically registers the tool with the MCP/OpenAPI proxy for discovery by agents
+1. Connects to an MCP server using Standard IO.
+2. Exposes the MCP server's functionality as a Kafka streaming application.
+3. Automatically registers the tool with the MCP/OpenAPI proxy for agent discovery.
 
-This proxy enables seamless integration between MCP-compatible tools and Kafka-based systems, facilitating communication
-between various components in your architecture.
+This proxy enables seamless integration between MCP-compatible tools and Kafka-based systems. It facilitates
+communication between various components in your architecture.
+
+## Features
+
+- **MCP Server Connectivity**: Establishes a connection to MCP servers.
+- **Kafka Integration**: Transforms MCP functionalities into Kafka streaming applications.
+- **Automatic Tool Registration**: Registers tools with the MCP/OpenAPI proxy for easy discovery by agents.
+- **Configuration Flexibility**: Supports configuration through environment variables and YAML files.
 
 ## Installation
 
@@ -22,23 +30,24 @@ MCP Client Proxy is a standard Java application built with Maven.
 
 ### Prerequisites
 
-- Java 17 or higher
-- Maven 3.6 or higher
+- **Java 17 or higher**
+- **Maven 3.6 or higher**
 
 ### Building from Source
 
-1. Clone the repository:
+1. **Clone the repository**:
    ```
    git clone https://github.com/confluentinc/mcp-openapi-proxy.git
    cd mcp-openapi-proxy
    ```
 
-2. Build with Maven:
+2. **Build with Maven**:
    ```
    mvn clean package
    ```
 
-3. The build process will generate a JAR file in the `frameworks/mpc-client-proxy/target` directory.
+3. **Locate the JAR file**: The build process will generate a JAR file in the `frameworks/mpc-client-proxy/target`
+   directory.
 
 ### Using the JAR
 
@@ -56,12 +65,12 @@ mcp-client-proxy [options] [command]
 
 ### Commands
 
-- `help`: Displays usage information and available commands
-- `-c, --config <path>`: Specifies the MCP server configuration file
+- `help`: Displays usage information and available commands.
+- `-c, --config <path>`: Specifies the MCP server configuration file.
 
 ### Options
 
-- `--spring.config.location=<path>`: Override the default proxy configuration file location
+- `--spring.config.location=<path>`: Override the default proxy configuration file location.
 
 ### Example Usage
 
@@ -69,21 +78,19 @@ mcp-client-proxy [options] [command]
 mcp-client-proxy -c ./cfg.yaml
 ```
 
-This will start the proxy using the MCP server configuration file `cfg.yaml` in the current directory.
+This command starts the proxy using the MCP server configuration file `cfg.yaml` in the current directory. The proxy
+then establishes a connection to the MCP server and exposes its functionalities through Kafka topics.
 
 ## Configuration
 
 The MCP Client Proxy has two types of configuration:
 
-1. **Proxy Configuration**: Controls the proxy's behavior, Kafka connectivity, and logging
-2. **MCP Server Configuration**: Specifies the MCP server details and tool information
+### 1. Proxy Configuration
 
-### Proxy Configuration
+This configuration controls the proxy's behavior, Kafka connectivity, and logging. It can be set through:
 
-The proxy itself is configured through:
-
-1. Environment variables (recommended for production/deployment)
-2. A configuration file (can be specified with `--spring.config.location`)
+- **Environment Variables** (recommended for production/deployment)
+- **Configuration File** (can be specified with `--spring.config.location`)
 
 #### Standard Proxy Configuration File
 
@@ -107,28 +114,7 @@ logging:
     console: ""
 ```
 
-#### Environment Variables
-
-The proxy uses the following environment variables:
-
-| Environment Variable | Description                        | Required |
-|----------------------|------------------------------------|----------|
-| `APPLICATION_ID`     | Kafka application ID               | Yes      |
-| `BROKER_URL`         | Kafka broker URL                   | Yes      |
-| `JAAS_USERNAME`      | Kafka JAAS authentication username | Yes      |
-| `JAAS_PASSWORD`      | Kafka JAAS authentication password | Yes      |
-| `SR_URL`             | Schema Registry URL                | Yes      |
-| `SR_API_KEY`         | Schema Registry API key            | Yes      |
-| `SR_API_SECRET`      | Schema Registry API secret         | Yes      |
-| `LOG_FILE`           | Log file path                      | No       |
-
-You can override the default configuration by using the `--spring.config.location` command line argument:
-
-```
-mcp-client-proxy --spring.config.location=file:/path/to/custom/application.yml -c ./server-config.yml
-```
-
-### MCP Server Configuration
+### 2. MCP Server Configuration
 
 The MCP server details are specified in a separate configuration file that is passed to the proxy with the `-c` or
 `--config` option.
@@ -190,18 +176,36 @@ tool:
 
 This configuration:
 
-1. Uses the `uv` command to run a Python MCP server
-2. Registers a tool named "add" with the specified output schema
-3. Uses stdio mode for communication with the server
+1. Uses the `uv` command to run a Python MCP server.
+2. Registers a tool named "add" with the specified output schema.
+3. Uses stdio mode for communication with the server.
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+- **Issue**: Unable to connect to the MCP server.
+    - **Solution**: Check the MCP server URL and ensure it is running.
+
+- **Issue**: Kafka topics are not created.
+    - **Solution**: Verify Kafka broker settings and ensure the application has the necessary permissions.
+
+- **Issue**: Configuration file not found.
+    - **Solution**: Ensure the path to the configuration file is correct and accessible.
 
 ## Kafka Integration
 
 The MCP Client Proxy creates the necessary Kafka topics and configurations to expose the MCP server's functionality.
-Agents can then discover and utilize these tools through the Kafka streaming interface.
+
+### Message Flow
+
+1. The MCP server receives requests from the `request_topic`.
+2. It processes the requests and sends responses to the `response_topic`.
+3. Agents can discover and utilize these tools through the Kafka streaming interface, facilitating communication.
 
 ## Tool Registration
 
-The proxy automatically registers the configured tool with the MCP/OpenAPI proxy, enabling discovery by agents. The
+The proxy automatically registers the configured tool with the MCP/OpenAPI proxy. This enables discovery by agents. The
 registration includes:
 
 - Tool name
@@ -210,6 +214,11 @@ registration includes:
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues and submit pull requests.
+Contributions are welcome! To submit issues or pull requests:
+
+1. **Open an Issue**: Describe the problem or suggestion clearly.
+2. **Submit a Pull Request**: Ensure your code adheres to existing style guidelines and includes tests where applicable.
+
+Feel free to engage with the community and contribute to the project!
 
 ## [License](LICENSE)
