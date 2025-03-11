@@ -7,7 +7,6 @@ import io.confluent.pas.mcp.common.services.*;
 import io.confluent.pas.mcp.proxy.frameworks.java.kafka.TopicManagement;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -16,160 +15,224 @@ import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Produced;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.Map;
 
 /**
- * SubscriptionHandler class that handles the subscription to a registration.
- * This class manages the lifecycle of Kafka consumers and producers, and handles
- * the registration and subscription of topics for processing requests and responses.
+ * Manages Kafka subscriptions for request-response communication patterns.
+ * This class handles:
+ * - Topic creation and management for request/response flows
+ * - Schema registration with the Schema Registry
+ * - Setting up Kafka Streams topology for processing requests
+ * - Lifecycle management of Kafka resources
  *
- * @param <K>   Key type
- * @param <REQ> Request type
- * @param <RES> Response type
+ * @param <K>   Key type for Kafka messages
+ * @param <REQ> Request payload type
+ * @param <RES> Response payload type
  */
 @Slf4j
 public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
 
     /**
-     * RequestHandler interface for handling incoming requests.
+     * Interface for handling incoming requests from Kafka topics.
      *
-     * @param <K>   Key type
-     * @param <REQ> Request type
-     * @param <RES> Response type
+     * @param <K>   Key type for messages
+     * @param <REQ> Request payload type
+     * @param <RES> Response payload type
      */
     public interface RequestHandler<K, REQ, RES> {
         void onRequest(Request<K, REQ, RES> request);
     }
 
-    private final KafkaConfiguration kafkaConfigration;
+    private final KafkaConfiguration kafkaConfiguration;
     private final RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService;
-    private final TopicManagement topicManagement;
     private final Class<K> keyClass;
     private final Class<REQ> requestClass;
     private final Class<RES> responseClass;
-    private KafkaStreams kafkaStreams;
     private final Serdes.WrapperSerde<K> keySerde;
-    private final Serdes.WrapperSerde<REQ> reqWrapperSerde;
-    private final Serdes.WrapperSerde<RES> resWrapperSerde;
+    private final Serdes.WrapperSerde<REQ> requestSerde;
+    private final Serdes.WrapperSerde<RES> responseSerde;
+    private KafkaStreams kafkaStreams;
 
     /**
-     * Constructor for SubscriptionHandler.
+     * Creates a new subscription handler with the specified message types.
      *
-     * @param kafkaConfigration The Kafka configuration
-     * @param keyClass          The class type of the key
-     * @param requestClass      The class type of the request
-     * @param responseClass     The class type of the response
+     * @param kafkaConfiguration Kafka cluster configuration
+     * @param keyClass           Class type for message keys
+     * @param requestClass       Class type for request payloads
+     * @param responseClass      Class type for response payloads
      */
-    public SubscriptionHandler(KafkaConfiguration kafkaConfigration,
+    public SubscriptionHandler(KafkaConfiguration kafkaConfiguration,
                                Class<K> keyClass,
                                Class<REQ> requestClass,
                                Class<RES> responseClass) {
-        this.kafkaConfigration = kafkaConfigration;
-        this.topicManagement = new TopicManagement(kafkaConfigration);
-        this.registrationService = new RegistrationService<>(
-                kafkaConfigration,
-                Schemas.RegistrationKey.class,
-                Schemas.Registration.class);
-
+        this.kafkaConfiguration = kafkaConfiguration;
         this.keyClass = keyClass;
         this.requestClass = requestClass;
         this.responseClass = responseClass;
 
-        this.keySerde = getSerdes(keyClass, true);
-        this.reqWrapperSerde = getSerdes(requestClass, false);
-        this.resWrapperSerde = getSerdes(responseClass, false);
-    }
+        // Initialize dependent services
+        this.registrationService = new RegistrationService<>(
+                kafkaConfiguration,
+                Schemas.RegistrationKey.class,
+                Schemas.Registration.class);
 
-    @Override
-    public void close() {
-        registrationService.close();
-        if (kafkaStreams != null) {
-            kafkaStreams.close();
-        }
+        // Create serializers/deserializers
+        this.keySerde = createSerde(keyClass, true);
+        this.requestSerde = createSerde(requestClass, false);
+        this.responseSerde = createSerde(responseClass, false);
     }
 
     /**
-     * Subscribes to a registration and handles incoming requests.
+     * Subscribes to a registration using derived schemas from class types.
      *
-     * @param registration Registration to use for the subscription
-     * @param handler      RequestHandler to handle the request
-     * @throws SubscriptionException if there is an error during subscription
+     * @param registration Registration containing topic and name information
+     * @param handler      Handler to process incoming requests
+     * @throws SubscriptionException if subscription setup fails
      */
     public void subscribeWith(Schemas.Registration registration,
                               RequestHandler<K, REQ, RES> handler) throws SubscriptionException {
         log.info("Subscribing for registration: {}", registration.getName());
 
-        // First we create the topic for the request/response
         try {
-            topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestClass);
-            topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseClass);
+            createTopicsForRegistration(registration, keyClass, requestClass, responseClass);
+            startSubscription(registration, handler);
         } catch (Exception e) {
-            log.error("Failed to create topic", e);
-            throw new SubscriptionException("Failed to create topic", e);
+            throw new SubscriptionException("Failed to subscribe with registration: " + registration.getName(), e);
         }
-
-        subscribe(registration, handler);
     }
 
     /**
-     * Subscribes to a registration and handles incoming requests.
+     * Subscribes to a registration using explicit JSON schemas.
      *
-     * @param registration   Registration to use for the subscription
-     * @param handler        RequestHandler to handle the request
-     * @param requestSchema  The request schema
-     * @param responseSchema The response schema
-     * @throws SubscriptionException if there is an error during subscription
+     * @param registration   Registration containing topic and name information
+     * @param requestSchema  Schema for request validation
+     * @param responseSchema Schema for response validation
+     * @param handler        Handler to process incoming requests
+     * @throws SubscriptionException if subscription setup fails
      */
     public void subscribeWith(Schemas.Registration registration,
                               JsonSchema requestSchema,
                               JsonSchema responseSchema,
                               RequestHandler<K, REQ, RES> handler) throws SubscriptionException {
-        log.info("Subscribing for registration: {}", registration.getName());
+        log.info("Subscribing for registration with custom schemas: {}", registration.getName());
 
-        // First we create the topic for the request/response
         try {
-            topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestSchema);
-            topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseSchema);
+            createTopicsWithSchemas(registration, requestSchema, responseSchema);
+            startSubscription(registration, handler);
         } catch (Exception e) {
-            log.error("Failed to create topic", e);
-            throw new SubscriptionException("Failed to create topic", e);
+            throw new SubscriptionException("Failed to subscribe with schemas for: " + registration.getName(), e);
         }
-
-        subscribe(registration, handler);
     }
 
-    private <VALUE> Serdes.WrapperSerde<VALUE> getSerdes(Class<VALUE> value, boolean isKey) {
-        final Map<String, Object> configuration = KafkaPropertiesFactory.getSchemaRegistryConfig(kafkaConfigration, value, isKey);
-        final Serdes.WrapperSerde<VALUE> serde = new Serdes.WrapperSerde<>(
+    /**
+     * Releases all resources used by this handler.
+     */
+    @Override
+    public void close() {
+        log.info("Closing subscription handler resources");
+
+        if (kafkaStreams != null) {
+            try {
+                kafkaStreams.close();
+                log.debug("Kafka Streams closed successfully");
+            } catch (Exception e) {
+                log.warn("Error closing Kafka Streams", e);
+            }
+        }
+
+        try {
+            registrationService.close();
+            log.debug("Registration service closed successfully");
+        } catch (Exception e) {
+            log.warn("Error closing registration service", e);
+        }
+    }
+
+    /**
+     * Creates a Kafka Serde for serialization/deserialization.
+     *
+     * @param valueClass Class to create serde for
+     * @param isKey      Whether this is for a key (true) or value (false)
+     * @return Configured Serde instance
+     */
+    private <T> Serdes.WrapperSerde<T> createSerde(Class<T> valueClass, boolean isKey) {
+        final Map<String, Object> configuration =
+                KafkaPropertiesFactory.getSchemaRegistryConfig(kafkaConfiguration, valueClass, isKey);
+
+        final Serdes.WrapperSerde<T> serde = new Serdes.WrapperSerde<>(
                 new KafkaJsonSchemaSerializer<>(),
                 new KafkaJsonSchemaDeserializer<>());
 
         serde.configure(configuration, isKey);
-
         return serde;
     }
 
-    private void subscribe(Schemas.Registration registration, RequestHandler<K, REQ, RES> handler) {
-        // Register the capability
+    /**
+     * Creates topics using class types.
+     */
+    private <T, U> void createTopicsForRegistration(Schemas.Registration registration,
+                                                    Class<K> keyClass,
+                                                    Class<T> requestClass,
+                                                    Class<U> responseClass) throws Exception {
+        try (TopicManagement topicManagement = new TopicManagement(kafkaConfiguration); topicManagement) {
+            topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestClass);
+            topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseClass);
+            log.debug("Created topics for registration: {}", registration.getName());
+        }
+    }
+
+    /**
+     * Creates topics using explicit schemas.
+     */
+    private void createTopicsWithSchemas(Schemas.Registration registration,
+                                         JsonSchema requestSchema,
+                                         JsonSchema responseSchema) throws Exception {
+        try (TopicManagement topicManagement = new TopicManagement(kafkaConfiguration); topicManagement) {
+            topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestSchema);
+            topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseSchema);
+            log.debug("Created topics with schemas for registration: {}", registration.getName());
+        }
+    }
+
+    /**
+     * Registers capability and starts Kafka Streams processing.
+     */
+    private void startSubscription(Schemas.Registration registration,
+                                   RequestHandler<K, REQ, RES> handler) {
+        registerCapability(registration);
+        setupAndStartKafkaStreams(registration, handler);
+    }
+
+    /**
+     * Registers the capability in the registration service.
+     */
+    private void registerCapability(Schemas.Registration registration) {
         final Schemas.RegistrationKey registrationKey = new Schemas.RegistrationKey(registration.getName());
+
         if (!registrationService.isRegistered(registrationKey)) {
-            log.info("Registering: {}", registration.getName());
+            log.info("Registering capability: {}", registration.getName());
             registrationService.register(registrationKey, registration);
         } else {
-            log.info("Already registered: {}", registration.getName());
+            log.info("Capability already registered: {}", registration.getName());
         }
+    }
 
-
-        // Build the KStream topology
+    /**
+     * Sets up and starts the Kafka Streams topology.
+     */
+    private void setupAndStartKafkaStreams(Schemas.Registration registration,
+                                           RequestHandler<K, REQ, RES> handler) {
         StreamsBuilder builder = new StreamsBuilder();
 
-        builder.stream(registration.getRequestTopicName(), Consumed.with(keySerde, reqWrapperSerde))
+        builder.stream(registration.getRequestTopicName(), Consumed.with(keySerde, requestSerde))
                 .process(new SubscriptionHandlerSupplier<>(handler, registration))
-                .to(registration.getResponseTopicName(), Produced.with(keySerde, resWrapperSerde));
+                .to(registration.getResponseTopicName(), Produced.with(keySerde, responseSerde));
 
         final Topology topology = builder.build();
-        kafkaStreams = new KafkaStreams(topology, KafkaPropertiesFactory.getKStreamsProperties(kafkaConfigration));
+        kafkaStreams = new KafkaStreams(topology,
+                KafkaPropertiesFactory.getKStreamsProperties(kafkaConfiguration));
+
+        log.info("Starting Kafka Streams for registration: {}", registration.getName());
         kafkaStreams.start();
     }
 }

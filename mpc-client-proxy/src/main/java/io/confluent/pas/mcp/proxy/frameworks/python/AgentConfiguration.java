@@ -71,8 +71,6 @@ public class AgentConfiguration {
         } else {
             throw new ConfigurationException("Unsupported configuration file format: " + filePath);
         }
-
-
     }
 
     private static AgentConfiguration parseJsonConfiguration(File file, String filePath) throws ConfigurationException {
