@@ -34,11 +34,11 @@
 
     <properties>
         <java.version>21</java.version>
-        <confluent.version>7.9.1-24</confluent.version>
+        <confluent.version>7.9.1-25</confluent.version>
         <kafka.version>3.9.0</kafka.version>
         <kcache.version>5.2.0</kcache.version>
         <langchain4j.version>1.0.0-beta1</langchain4j.version>
-        <reactor.version>2024.0.3</reactor.version>
+        <reactor.version>2024.0.4</reactor.version>
         <lombok.version>1.18.36</lombok.version>
     </properties>
 
