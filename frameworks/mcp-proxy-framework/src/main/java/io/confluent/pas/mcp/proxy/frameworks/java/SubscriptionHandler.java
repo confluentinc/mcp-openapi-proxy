@@ -225,7 +225,7 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
         StreamsBuilder builder = new StreamsBuilder();
 
         builder.stream(registration.getRequestTopicName(), Consumed.with(keySerde, requestSerde))
-                .process(new SubscriptionHandlerSupplier<>(handler, registration))
+                .process(new SubscriptionHandlerSupplier<>(handler))
                 .to(registration.getResponseTopicName(), Produced.with(keySerde, responseSerde));
 
         final Topology topology = builder.build();

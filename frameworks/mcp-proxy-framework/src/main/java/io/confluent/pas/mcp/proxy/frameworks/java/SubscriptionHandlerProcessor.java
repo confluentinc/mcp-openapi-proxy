@@ -1,6 +1,5 @@
 package io.confluent.pas.mcp.proxy.frameworks.java;
 
-import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
@@ -9,12 +8,10 @@ import org.apache.kafka.streams.processor.api.Record;
 public class SubscriptionHandlerProcessor<K extends Key, REQ, RES> implements Processor<K, REQ, K, RES> {
 
     private final SubscriptionHandler.RequestHandler<K, REQ, RES> subscriptionHandler;
-    private final Schemas.Registration registration;
     private ProcessorContext<K, RES> context;
 
-    public SubscriptionHandlerProcessor(SubscriptionHandler.RequestHandler<K, REQ, RES> subscriptionHandler, Schemas.Registration registration) {
+    public SubscriptionHandlerProcessor(SubscriptionHandler.RequestHandler<K, REQ, RES> subscriptionHandler) {
         this.subscriptionHandler = subscriptionHandler;
-        this.registration = registration;
     }
 
     @Override
@@ -28,7 +25,7 @@ public class SubscriptionHandlerProcessor<K extends Key, REQ, RES> implements Pr
                 record.key(),
                 record.value(),
                 this::sendResponse);
-        
+
         subscriptionHandler.onRequest(request);
     }
 

@@ -1,5 +1,17 @@
 package io.confluent.pas.mcp.proxy.frameworks.python;
 
+/**
+ * The `Agent` class is responsible for managing communication between MCP (Model Context Protocol)
+ * and Kafka. It initializes the MCP client using Stdio transport, handles subscriptions to Kafka topics,
+ * and processes requests from Python-based tools.
+ * <p>
+ * Key Responsibilities:
+ * - Initializes and configures the MCP client.
+ * - Manages Kafka topic subscriptions via SubscriptionHandlers.
+ * - Handles incoming requests and responses using AgentRequestHandler.
+ * - Ensures proper cleanup of resources upon shutdown.
+ */
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,45 +33,35 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
- * Core component managing MCP (Model Context Protocol) communication between Python tools and Kafka.
- * This Spring-managed component handles tool initialization, subscription management, and request processing.
+ * Shared ObjectMapper instance for JSON serialization and deserialization.
  */
 @Slf4j
 @Component
 public class Agent {
-    /**
-     * Shared ObjectMapper instance for JSON operations
-     */
+    // Shared ObjectMapper instance for JSON serialization and deserialization.
     private final static ObjectMapper MAPPER = new ObjectMapper();
 
-    /**
-     * Client for asynchronous MCP communications
-     */
+    // Asynchronous client for handling communication with MCP.
     private final McpAsyncClient mcpAsyncClient;
-    /**
-     * Configuration for agent behavior and tools
-     */
+    // Configuration containing agent and mcpTool settings.
     private final AgentConfiguration agentConfiguration;
-    /**
-     * Kafka-specific configuration
-     */
+    // Configuration settings for managing Kafka connectivity and topics.
     private final KafkaConfiguration kafkaConfiguration;
-    /**
-     * Handler for processing tool requests
-     */
-    private final AgentRequestHandler requestHandler;
-    /**
-     * Handler for managing Kafka subscriptions
-     */
-    private SubscriptionHandler<Key, AgentGenericRequest, JsonNode> subscriptionHandler;
+
+    // List of handlers managing subscriptions to Kafka topics.
+    private final List<SubscriptionHandler<Key, AgentGenericRequest, JsonNode>> handlers = new ArrayList<>();
 
     /**
-     * Creates a new Agent instance with required configurations.
-     * Initializes the MCP client with stdio transport and sets up request handling.
+     * Constructs an Agent instance and initializes the MCP client with Stdio transport.
      *
-     * @param kafkaConfiguration Configuration for Kafka connectivity
-     * @param agentConfiguration Agent-specific configuration including tool settings
+     * @param kafkaConfiguration Configuration for Kafka connectivity.
+     * @param agentConfiguration Configuration containing agent settings and mcpTool configurations.
      */
     @Autowired
     public Agent(KafkaConfiguration kafkaConfiguration, AgentConfiguration agentConfiguration) {
@@ -75,13 +77,11 @@ public class Agent {
                 .clientInfo(new McpSchema.Implementation("mcp-client-proxy", "0.1.0"))
                 .capabilities(McpSchema.ClientCapabilities.builder().roots(true).build())
                 .build();
-
-        this.requestHandler = new AgentRequestHandler(mcpAsyncClient, MAPPER, agentConfiguration);
     }
 
     /**
      * Initializes the agent after construction.
-     * Performs MCP client initialization and starts tool handler setup.
+     * Starts the MCP client and sets up mcpTool subscriptions.
      */
     @PostConstruct
     public void init() {
@@ -95,48 +95,58 @@ public class Agent {
     }
 
     /**
-     * Cleans up resources when the agent is shutting down.
-     * Ensures the subscription handler is properly stopped.
+     * Cleans up resources when the agent shuts down.
+     * Ensures all subscription handlers are properly stopped.
      */
     @PreDestroy
     public void destroy() {
-        if (subscriptionHandler != null) {
-            subscriptionHandler.close();
-        }
+        handlers.forEach(SubscriptionHandler::close);
+        handlers.clear();
     }
 
     /**
-     * Sets up subscription handling for a specific tool.
-     * Creates necessary registrations and starts the subscription process.
+     * Configures subscription handlers for MCP mcpTools.
+     * Registers the mcpTool, associates request handling logic, and subscribes to Kafka topics.
      *
-     * @param handler The tool handler to set up subscriptions for
+     * @param agentToolHandlers List of tool handlers for managing requests.
      */
-    private void setupSubscriptionHandler(AgentToolHandler handler) {
-        var registration = new Schemas.Registration(
-                handler.tool().name(),
-                handler.tool().description(),
-                agentConfiguration.getTool().getRequest_topic(),
-                agentConfiguration.getTool().getResponse_topic());
+    private void setupSubscriptionHandler(List<AgentToolHandler> agentToolHandlers) {
+        agentToolHandlers.forEach(handler -> {
 
-        this.subscriptionHandler = new SubscriptionHandler<>(
-                kafkaConfiguration,
-                Key.class,
-                AgentGenericRequest.class,
-                JsonNode.class);
 
-        subscriptionHandler.subscribeWith(
-                registration,
-                createInputSchema(handler.tool()),
-                agentConfiguration.getTool().getOutput_schema(),
-                requestHandler::handleRequest);
+            final Schemas.Registration registration = new Schemas.Registration(
+                    handler.mcpTool().name(),
+                    handler.mcpTool().description(),
+                    handler.tool().getRequest_topic(),
+                    handler.tool().getResponse_topic());
+
+            final SubscriptionHandler<Key, AgentGenericRequest, JsonNode> subscriptionHandler = new SubscriptionHandler<>(
+                    new KafkaToolConfiguration(kafkaConfiguration, handler.tool()),
+                    Key.class,
+                    AgentGenericRequest.class,
+                    JsonNode.class);
+
+            final AgentRequestHandler requestHandler = new AgentRequestHandler(
+                    mcpAsyncClient,
+                    MAPPER,
+                    handler.tool());
+
+            subscriptionHandler.subscribeWith(
+                    registration,
+                    createInputSchema(handler.mcpTool()),
+                    handler.tool().getOutput_schema(),
+                    requestHandler::handleRequest);
+
+            handlers.add(subscriptionHandler);
+        });
     }
 
     /**
-     * Creates a JSON schema for the tool's input parameters.
+     * Generates a JSON schema for the mcpTool's expected input parameters.
      *
-     * @param tool The MCP tool to create the schema for
-     * @return A JsonSchema representing the tool's input parameters
-     * @throws AgentException if schema serialization fails
+     * @param tool The MCP tool whose schema is to be created.
+     * @return A JsonSchema representing the tool's input structure.
+     * @throws AgentException if an error occurs while serializing the schema.
      */
     private JsonSchema createInputSchema(McpSchema.Tool tool) {
         try {

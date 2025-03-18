@@ -9,24 +9,32 @@ import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-/**
- * Handles the initialization process for MCP (Model Context Protocol) tools.
- * This class is responsible for discovering and validating tools through the MCP client,
- * with built-in retry mechanisms for reliability.
- */
 @Slf4j
+/**
+ * The `AgentInitializer` class is responsible for initializing and validating MCP (Model Context Protocol) tools.
+ * It retrieves available tools from the MCP client, verifies their configurations, and ensures proper retry mechanisms
+ * for robustness. This process ensures that only correctly configured tools are registered for use.
+ *
+ * Key Responsibilities:
+ * - Lists available MCP tools via asynchronous communication.
+ * - Validates tools against the agent configuration.
+ * - Implements a retry mechanism to handle transient failures.
+ */
 public class AgentInitializer {
-    /** Client for asynchronous MCP communications */
+    // Asynchronous client for retrieving available MCP tools and managing communication.
     private final McpAsyncClient mcpAsyncClient;
-    /** Configuration containing tool specifications */
+    // Configuration object containing MCP tool specifications and settings.
     private final AgentConfiguration config;
 
     /**
-     * Creates a new initializer instance.
+     * Constructs an `AgentInitializer` instance.
      *
-     * @param mcpAsyncClient The async client for MCP communication
-     * @param config The configuration containing tool specifications
+     * @param mcpAsyncClient The async client for communicating with MCP.
+     * @param config         Configuration object containing MCP tool specifications.
      */
     public AgentInitializer(McpAsyncClient mcpAsyncClient, AgentConfiguration config) {
         this.mcpAsyncClient = mcpAsyncClient;
@@ -34,16 +42,15 @@ public class AgentInitializer {
     }
 
     /**
-     * Initializes the tool handling system.
-     * This method:
-     * 1. Lists available tools through MCP
-     * 2. Validates and finds the configured tool
-     * 3. Implements retry logic for reliability
+     * Initializes the MCP tool handling system.
+     * This method retrieves a list of available tools from the MCP client,
+     * validates them against the configuration, and applies a retry strategy
+     * for resilience.
      *
-     * @return A Mono containing the validated tool handler
-     * @throws AgentException if tool validation fails
+     * @return A Mono containing the validated list of MCP tool handlers.
+     * @throws AgentException if tool validation fails after retries.
      */
-    public Mono<AgentToolHandler> initialize() {
+    public Mono<List<AgentToolHandler>> initialize() {
         return mcpAsyncClient.listTools()
                 .flatMap(tools -> findAndValidateTool(tools.tools()))
                 .retryWhen(Retry.fixedDelay(60, Duration.ofSeconds(1))
@@ -56,23 +63,25 @@ public class AgentInitializer {
     }
 
     /**
-     * Finds and validates a specific tool from the available tools list.
+     * Finds and validates MCP tools from the provided list by matching them
+     * against the configured specifications.
      *
-     * @param tools List of available MCP tools
-     * @return A Mono containing the validated tool handler
-     * @throws AgentException if no tools are found or the requested tool is not available
+     * @param tools List of available MCP tools retrieved from the MCP client.
+     * @return A Mono containing the validated list of MCP tool handlers.
+     * @throws AgentException if no matching tools are found.
      */
-    private Mono<AgentToolHandler> findAndValidateTool(List<McpSchema.Tool> tools) {
+    private Mono<List<AgentToolHandler>> findAndValidateTool(List<McpSchema.Tool> tools) {
         if (tools.isEmpty()) {
             return Mono.error(new AgentException("No tools found"));
         }
 
-        String toolName = config.getTool().getName();
-        return tools.stream()
-                .filter(t -> t.name().equals(toolName))
-                .findFirst()
-                .map(tool -> new AgentToolHandler(tool, toolName))
-                .map(Mono::just)
-                .orElseGet(() -> Mono.error(new AgentException("Tool not found: " + toolName)));
+        final Map<String, AgentConfiguration.ToolConfiguration> allTools = config.getTools()
+                .stream()
+                .collect(Collectors.toMap(AgentConfiguration.ToolConfiguration::getName, Function.identity()));
+
+        return Mono.just(tools.stream()
+                .filter(t -> allTools.containsKey(t.name()))
+                .map(tool -> new AgentToolHandler(tool, allTools.get(tool.name())))
+                .toList());
     }
 }

@@ -63,8 +63,8 @@ public class AgentConfiguration {
     @JsonProperty("arguments")
     private List<String> arguments;
 
-    @JsonProperty("tool")
-    private ToolConfiguration tool;
+    @JsonProperty("mcpTool")
+    private List<ToolConfiguration> tools;
 
     /**
      * Parses the agent configuration from a file.

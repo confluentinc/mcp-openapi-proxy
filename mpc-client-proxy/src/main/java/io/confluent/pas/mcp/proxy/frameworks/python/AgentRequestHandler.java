@@ -17,11 +17,10 @@ import reactor.core.publisher.Mono;
 
 /**
  * Handles requests and responses between MCP tools and the agent system.
- * This class is responsible for processing tool requests, managing responses,
+ * This class is responsible for processing mcpTool requests, managing responses,
  * and handling data transformations between different formats.
  */
 @Slf4j
-@RequiredArgsConstructor
 public class AgentRequestHandler {
     /**
      * Client for asynchronous MCP communication
@@ -32,28 +31,37 @@ public class AgentRequestHandler {
      */
     private final ObjectMapper mapper;
     /**
-     * Configuration containing tool settings
+     * Configuration containing mcpTool settings
      */
-    private final AgentConfiguration config;
+    private final AgentConfiguration.ToolConfiguration tool;
+
+    private final JsonResponseDeserializer deserializer;
+
+    public AgentRequestHandler(McpAsyncClient mcpAsyncClient, ObjectMapper mapper, AgentConfiguration.ToolConfiguration tool) {
+        this.mcpAsyncClient = mcpAsyncClient;
+        this.mapper = mapper;
+        this.tool = tool;
+        this.deserializer = new JsonResponseDeserializer(tool);
+    }
 
     /**
-     * Processes incoming tool requests by calling the appropriate MCP tool
+     * Processes incoming mcpTool requests by calling the appropriate MCP mcpTool
      * and handling the response.
      *
      * @param request The incoming request containing key, generic request data, and JSON payload
      */
     public void handleRequest(Request<Key, AgentGenericRequest, JsonNode> request) {
-        mcpAsyncClient.callTool(new McpSchema.CallToolRequest(config.getTool().getName(), request.getRequest()))
+        mcpAsyncClient.callTool(new McpSchema.CallToolRequest(tool.getName(), request.getRequest()))
                 .flatMap(result -> processToolResponse(result, request))
                 .doOnError(error -> log.error("Error processing request", error))
                 .block();
     }
 
     /**
-     * Processes the tool's response by converting it to the expected format
+     * Processes the mcpTool's response by converting it to the expected format
      * and sending it back through the request channel.
      *
-     * @param result  The result from the MCP tool call
+     * @param result  The result from the MCP mcpTool call
      * @param request The original request for context
      * @return A Mono completing when the response is processed
      * @throws AgentException if response processing fails or unexpected response type is received
@@ -63,13 +71,6 @@ public class AgentRequestHandler {
             return Mono.error(new AgentException("Unexpected response type"));
         }
 
-        try {
-            var response = mapper.readValue(textContent.text(), AgentGenericResponse.class);
-            var jsonNode = mapper.valueToTree(response);
-            var envelope = JsonSchemaUtils.envelope(config.getTool().getOutput_schema(), jsonNode);
-            return request.respond(envelope);
-        } catch (JsonProcessingException e) {
-            return Mono.error(new AgentException("Error processing tool response", e));
-        }
+        return request.respond(deserializer.deserialize(textContent.text()));
     }
 }
