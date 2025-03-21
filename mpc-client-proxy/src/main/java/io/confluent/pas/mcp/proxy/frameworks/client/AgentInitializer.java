@@ -1,6 +1,6 @@
-package io.confluent.pas.mcp.proxy.frameworks.python;
+package io.confluent.pas.mcp.proxy.frameworks.client;
 
-import io.confluent.pas.mcp.proxy.frameworks.python.exceptions.AgentException;
+import io.confluent.pas.mcp.proxy.frameworks.client.exceptions.AgentException;
 import io.modelcontextprotocol.client.McpAsyncClient;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;

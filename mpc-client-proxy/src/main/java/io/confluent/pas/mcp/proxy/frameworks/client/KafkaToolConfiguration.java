@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.python;
+package io.confluent.pas.mcp.proxy.frameworks.client;
 
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 

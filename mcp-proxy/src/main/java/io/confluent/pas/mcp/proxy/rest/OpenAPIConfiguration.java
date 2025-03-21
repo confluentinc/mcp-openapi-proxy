@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.confluent.pas.mcp.common.utils.UriTemplate;
 import io.confluent.pas.mcp.proxy.registration.RegistrationCoordinator;
 import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
@@ -23,6 +23,7 @@ import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.avro.data.Json;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -57,7 +58,6 @@ public class OpenAPIConfiguration {
             @JsonProperty("additionalProperties") Boolean additionalProperties) {
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final RegistrationCoordinator registrationCoordinator;
 
     @Autowired
@@ -172,7 +172,7 @@ public class OpenAPIConfiguration {
                         });
                     }
                 });
-        
+
         pathItems.put("/rcs/" + path, pathItem);
     }
 
@@ -184,7 +184,7 @@ public class OpenAPIConfiguration {
      * @throws JsonProcessingException if the request schema cannot be parsed
      */
     private Content createRequestBody(String requestSchema) throws JsonProcessingException {
-        final JsonSchema requestSchemaProperties = OBJECT_MAPPER.readValue(requestSchema, JsonSchema.class);
+        final JsonSchema requestSchemaProperties = JsonUtils.toObject(requestSchema, JsonSchema.class);
         final Content requestBody = new Content();
         requestBody.addMediaType("application/json", new MediaType().schema(getSchema(requestSchemaProperties)));
         return requestBody;
@@ -214,7 +214,7 @@ public class OpenAPIConfiguration {
      * @throws JsonProcessingException If the response schema cannot be parsed
      */
     private ApiResponse createApiResponse(String responseSchema) throws JsonProcessingException {
-        final JsonSchema responseSchemaProperties = OBJECT_MAPPER.readValue(responseSchema, JsonSchema.class);
+        final JsonSchema responseSchemaProperties = JsonUtils.toObject(responseSchema, JsonSchema.class);
         final ApiResponse response = new ApiResponse();
         response.content(new Content().addMediaType("application/json", new MediaType().schema(getSchema(responseSchemaProperties))));
         response.description(HttpStatus.OK.getReasonPhrase());

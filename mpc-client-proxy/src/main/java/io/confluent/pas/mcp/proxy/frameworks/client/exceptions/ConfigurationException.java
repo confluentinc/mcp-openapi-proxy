@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.python.exceptions;
+package io.confluent.pas.mcp.proxy.frameworks.client.exceptions;
 
 /**
  * Exception thrown when there is an issue with the configuration.

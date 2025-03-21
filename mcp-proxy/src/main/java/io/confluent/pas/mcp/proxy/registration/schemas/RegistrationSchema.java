@@ -1,9 +1,9 @@
 package io.confluent.pas.mcp.proxy.registration.schemas;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -13,8 +13,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class RegistrationSchema {
-    private final static ObjectMapper MAPPER = new ObjectMapper();
-
     private String schema;
     private JsonSchema jsonSchema;
 
@@ -30,7 +28,7 @@ public class RegistrationSchema {
      * @return The enveloped payload
      */
     public JsonNode envelope(Object payload) {
-        final JsonNode jsonNode = MAPPER.valueToTree(payload);
+        final JsonNode jsonNode = JsonUtils.toJsonNode(payload);
         return JsonSchemaUtils.envelope(jsonSchema, jsonNode);
     }
 }

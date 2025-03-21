@@ -1,11 +1,11 @@
 package io.confluent.pas.mcp.proxy.frameworks.java.spring.chat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.serializers.KafkaJsonDeserializer;
 import io.confluent.kafka.serializers.KafkaJsonSerializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializerConfig;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.kcache.KafkaCache;
 import io.kcache.KafkaCacheConfig;
 import lombok.Getter;
@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
  * This class manages chat messages in a distributed manner using Kafka topics.
  */
 public class KafkaChatMemory implements ChatMemory {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /**
      * Internal representation of a chat message that can be serialized to Kafka.
@@ -35,7 +34,7 @@ public class KafkaChatMemory implements ChatMemory {
     public static class MemoryMessage extends HashMap<String, Object> {
 
         public static MemoryMessage fromMessage(Message message) {
-            return MAPPER.convertValue(message, MemoryMessage.class);
+            return JsonUtils.toObject(message, MemoryMessage.class);
         }
 
         public static Message toMessage(MemoryMessage message) {

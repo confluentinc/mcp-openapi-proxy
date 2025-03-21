@@ -2,20 +2,17 @@ package io.confluent.pas.mcp.demo.mcp.tools;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.json.*;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Map;
 
 class ToolSpecificationHelper {
-
-    private final static ObjectMapper MAPPER = new ObjectMapper();
-
     /**
      * Converts the 'Tool' type in the MCP schema to a ToolSpecification object.
      *
@@ -29,8 +26,8 @@ class ToolSpecificationHelper {
         builder.name(tool.name());
         builder.description(tool.description());
 
-        final String schema = MAPPER.writeValueAsString(tool.inputSchema());
-        JsonNode inputSchema = MAPPER.readTree(schema);
+        final String schema = JsonUtils.toString(tool.inputSchema());
+        JsonNode inputSchema = JsonUtils.toJsonNode(schema);
 
         builder.parameters((JsonObjectSchema) jsonNodeToJsonSchemaElement(inputSchema));
 

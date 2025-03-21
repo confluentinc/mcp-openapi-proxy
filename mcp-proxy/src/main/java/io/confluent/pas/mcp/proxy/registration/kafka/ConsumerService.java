@@ -99,12 +99,6 @@ public class ConsumerService<K, V> implements Closeable {
     @Override
     public void close() throws IOException {
         stopRequested = true;
-
-        try (kafkaConsumer) {
-            log.info("Kafka Consumer closed successfully.");
-        } catch (Exception e) {
-            log.error("Error closing Kafka Consumer", e);
-        }
         
         try {
             boolean done = executorSvc.awaitTermination(10, TimeUnit.SECONDS);

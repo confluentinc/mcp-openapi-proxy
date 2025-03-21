@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.python;
+package io.confluent.pas.mcp.proxy.frameworks.client;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.cli.*;

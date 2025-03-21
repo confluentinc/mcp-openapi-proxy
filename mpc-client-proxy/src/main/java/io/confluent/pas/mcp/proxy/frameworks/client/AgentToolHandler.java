@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.python;
+package io.confluent.pas.mcp.proxy.frameworks.client;
 
 import io.modelcontextprotocol.spec.McpSchema;
 

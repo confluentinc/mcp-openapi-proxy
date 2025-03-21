@@ -1,20 +1,26 @@
-package io.confluent.pas.mcp.proxy.frameworks.python;
+package io.confluent.pas.mcp.proxy.frameworks.client;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
-import io.confluent.pas.mcp.proxy.frameworks.python.exceptions.AgentException;
-import io.confluent.pas.mcp.proxy.frameworks.python.models.AgentGenericResponse;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
+import io.confluent.pas.mcp.proxy.frameworks.client.exceptions.AgentException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
 import org.everit.json.schema.*;
 
+import java.util.Map;
 
+/**
+ * A class to deserialize JSON responses based on the provided schema.
+ */
 @Slf4j
 public class JsonResponseDeserializer {
-    private final static ObjectMapper MAPPER = new ObjectMapper();
-
+    /**
+     * Enum to represent different JSON types.
+     */
     private enum JsonType {
         OBJECT,
         STRING,
@@ -26,47 +32,66 @@ public class JsonResponseDeserializer {
     private final JsonType jsonType;
     private final AgentConfiguration.ToolConfiguration toolConfiguration;
 
+    /**
+     * Constructor to initialize the deserializer with the tool configuration.
+     *
+     * @param toolConfiguration the tool configuration
+     */
     public JsonResponseDeserializer(AgentConfiguration.ToolConfiguration toolConfiguration) {
         this.toolConfiguration = toolConfiguration;
         this.jsonType = getJsonType();
     }
 
+    /**
+     * Deserialize the content string into an ObjectNode.
+     *
+     * @param content the content string to deserialize
+     * @return the deserialized ObjectNode
+     * @throws AgentException if deserialization fails
+     */
     public ObjectNode deserialize(String content) {
         try {
             final JsonNode jsonNode;
             switch (jsonType) {
-                case JsonType.OBJECT -> {
-                    // Check if the content starts with {
+                case OBJECT -> {
+                    // Check if the content starts with '{'
                     if (content.charAt(0) != '{') {
                         log.warn("Response content does not start with '{', wrapping in AgentGenericResponse");
                         content = "{\"response\": \"" + StringEscapeUtils.escapeJson(content) + "\"}";
                     }
 
-                    final AgentGenericResponse response = MAPPER.readValue(content, AgentGenericResponse.class);
-                    jsonNode = MAPPER.valueToTree(response);
+                    // Deserialize the content into a Map<String, Object> and convert to JsonNode
+                    final Map<String, Object> response = JsonUtils.toMap(content);
+                    jsonNode = JsonUtils.toJsonNode(response);
                 }
-                case JsonType.STRING -> jsonNode = MAPPER.valueToTree(content);
-                case JsonType.INTEGER -> {
+                case STRING -> jsonNode = JsonUtils.toJsonNode(content);
+                case INTEGER -> {
                     final Integer value = Integer.parseInt(content);
-                    jsonNode = MAPPER.valueToTree(value);
+                    jsonNode = JsonUtils.toJsonNode(value);
                 }
-                case JsonType.BOOLEAN -> {
+                case BOOLEAN -> {
                     final Boolean value = Boolean.parseBoolean(content);
-                    jsonNode = MAPPER.valueToTree(value);
+                    jsonNode = JsonUtils.toJsonNode(value);
                 }
-                case JsonType.DOUBLE -> {
+                case DOUBLE -> {
                     final Double value = Double.parseDouble(content);
-                    jsonNode = MAPPER.valueToTree(value);
+                    jsonNode = JsonUtils.toJsonNode(value);
                 }
                 default -> throw new AgentException("Unsupported JSON type: " + jsonType);
             }
 
+            // Envelope the JsonNode with the output schema
             return JsonSchemaUtils.envelope(toolConfiguration.getOutput_schema(), jsonNode);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize JSON: " + content, e);
+            throw new AgentException("Failed to deserialize JSON: " + content, e);
         }
     }
 
+    /**
+     * Determine the JSON type based on the schema.
+     *
+     * @return the JSON type
+     */
     private JsonType getJsonType() {
         final Schema schema = toolConfiguration.getOutput_schema().rawSchema();
 
@@ -88,5 +113,4 @@ public class JsonResponseDeserializer {
             return JsonType.OBJECT;
         }
     }
-
 }

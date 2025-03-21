@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.python;
+package io.confluent.pas.mcp.proxy.frameworks.client;
 
 /**
  * The `Agent` class is responsible for managing communication between MCP (Model Context Protocol)
@@ -14,14 +14,13 @@ package io.confluent.pas.mcp.proxy.frameworks.python;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.confluent.pas.mcp.proxy.frameworks.java.SubscriptionHandler;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
-import io.confluent.pas.mcp.proxy.frameworks.python.exceptions.AgentException;
-import io.confluent.pas.mcp.proxy.frameworks.python.models.AgentGenericRequest;
+import io.confluent.pas.mcp.proxy.frameworks.client.exceptions.AgentException;
 import io.modelcontextprotocol.client.McpAsyncClient;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
@@ -34,9 +33,7 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Shared ObjectMapper instance for JSON serialization and deserialization.
@@ -44,9 +41,6 @@ import java.util.Map;
 @Slf4j
 @Component
 public class Agent {
-    // Shared ObjectMapper instance for JSON serialization and deserialization.
-    private final static ObjectMapper MAPPER = new ObjectMapper();
-
     // Asynchronous client for handling communication with MCP.
     private final McpAsyncClient mcpAsyncClient;
     // Configuration containing agent and mcpTool settings.
@@ -55,7 +49,7 @@ public class Agent {
     private final KafkaConfiguration kafkaConfiguration;
 
     // List of handlers managing subscriptions to Kafka topics.
-    private final List<SubscriptionHandler<Key, AgentGenericRequest, JsonNode>> handlers = new ArrayList<>();
+    private final List<SubscriptionHandler<Key, JsonNode, JsonNode>> handlers = new ArrayList<>();
 
     /**
      * Constructs an Agent instance and initializes the MCP client with Stdio transport.
@@ -118,15 +112,14 @@ public class Agent {
                     handler.tool().getRequest_topic(),
                     handler.tool().getResponse_topic());
 
-            final SubscriptionHandler<Key, AgentGenericRequest, JsonNode> subscriptionHandler = new SubscriptionHandler<>(
+            final SubscriptionHandler<Key, JsonNode, JsonNode> subscriptionHandler = new SubscriptionHandler<>(
                     new KafkaToolConfiguration(kafkaConfiguration, handler.tool()),
                     Key.class,
-                    AgentGenericRequest.class,
+                    JsonNode.class,
                     JsonNode.class);
 
             final AgentRequestHandler requestHandler = new AgentRequestHandler(
                     mcpAsyncClient,
-                    MAPPER,
                     handler.tool());
 
             subscriptionHandler.subscribeWith(
@@ -148,7 +141,7 @@ public class Agent {
      */
     private JsonSchema createInputSchema(McpSchema.Tool tool) {
         try {
-            return new JsonSchema(MAPPER.writeValueAsString(tool.inputSchema()));
+            return new JsonSchema(JsonUtils.toString(tool.inputSchema()));
         } catch (JsonProcessingException e) {
             throw new AgentException("Error serializing input schema.", e);
         }

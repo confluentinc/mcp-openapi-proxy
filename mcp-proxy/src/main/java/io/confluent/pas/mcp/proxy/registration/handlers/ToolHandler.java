@@ -1,12 +1,11 @@
 package io.confluent.pas.mcp.proxy.registration.handlers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
 import io.confluent.pas.mcp.proxy.registration.RequestResponseHandler;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
@@ -31,11 +30,6 @@ import java.util.concurrent.ExecutionException;
 @Slf4j
 @AllArgsConstructor
 public class ToolHandler implements RegistrationHandler<Map<String, Object>, JsonNode> {
-
-    private final static TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
-    };
-    private final static ObjectMapper MAPPER = new ObjectMapper();
-
     @Getter
     private final Schemas.Registration registration;
     @Getter
@@ -111,7 +105,7 @@ public class ToolHandler implements RegistrationHandler<Map<String, Object>, Jso
         sendRequest(arguments).subscribe(response -> {
             // Serialize the response
             try {
-                final String result = MAPPER.writeValueAsString(response);
+                final String result = JsonUtils.toString(response);
                 sink.success(new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(result)),
                         false));
             } catch (JsonProcessingException e) {
