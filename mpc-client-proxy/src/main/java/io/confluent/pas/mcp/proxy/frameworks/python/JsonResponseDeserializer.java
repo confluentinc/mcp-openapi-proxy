@@ -3,16 +3,15 @@ package io.confluent.pas.mcp.proxy.frameworks.python;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
-import io.confluent.kafka.schemaregistry.rules.RuleContext;
 import io.confluent.pas.mcp.proxy.frameworks.python.exceptions.AgentException;
 import io.confluent.pas.mcp.proxy.frameworks.python.models.AgentGenericResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.text.StringEscapeUtils;
 import org.everit.json.schema.*;
-import org.springframework.util.StringUtils;
 
-import java.util.Map;
 
+@Slf4j
 public class JsonResponseDeserializer {
     private final static ObjectMapper MAPPER = new ObjectMapper();
 
@@ -37,6 +36,12 @@ public class JsonResponseDeserializer {
             final JsonNode jsonNode;
             switch (jsonType) {
                 case JsonType.OBJECT -> {
+                    // Check if the content starts with {
+                    if (content.charAt(0) != '{') {
+                        log.warn("Response content does not start with '{', wrapping in AgentGenericResponse");
+                        content = "{\"response\": \"" + StringEscapeUtils.escapeJson(content) + "\"}";
+                    }
+
                     final AgentGenericResponse response = MAPPER.readValue(content, AgentGenericResponse.class);
                     jsonNode = MAPPER.valueToTree(response);
                 }

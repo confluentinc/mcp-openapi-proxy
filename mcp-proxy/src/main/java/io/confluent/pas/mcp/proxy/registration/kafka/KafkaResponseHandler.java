@@ -1,14 +1,16 @@
-package io.confluent.pas.mcp.proxy.registration.internal;
+package io.confluent.pas.mcp.proxy.registration.kafka;
 
-import io.confluent.pas.mcp.proxy.registration.kafka.ConsumerService;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.common.utils.AutoReadWriteLock;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 /**
  * Handle responses from Kafka topics
@@ -20,7 +22,7 @@ public class KafkaResponseHandler implements Closeable {
      * Registration Handler
      */
     public interface ResponseHandler {
-        void handle(Map<String, Object> response);
+        void handle(JsonNode response);
     }
 
     /**
@@ -33,22 +35,27 @@ public class KafkaResponseHandler implements Closeable {
                                     Map<String, ResponseHandler> responseHandlers) {
     }
 
-    private static class Response extends HashMap<String, Object> {
-    }
-
     private static class ResponseKey extends HashMap<String, Object> {
     }
 
     private final Map<String, RegistrationItem> responseHandlers = new ConcurrentHashMap<>();
     private final AutoReadWriteLock lock = new AutoReadWriteLock();
 
-    private final ConsumerService<ResponseKey, Response> consumerService;
+    private final ConsumerService<ResponseKey, JsonNode> consumerService;
 
     public KafkaResponseHandler(KafkaConfiguration kafkaConfiguration) {
         this.consumerService = new ConsumerService<>(
                 kafkaConfiguration,
                 ResponseKey.class,
-                Response.class);
+                JsonNode.class,
+                this::handleResponse);
+    }
+
+    public void addRegistrations(Collection<Schemas.Registration> registrations) {
+        consumerService.subscribe(registrations
+                .stream()
+                .map(Schemas.Registration::getResponseTopicName)
+                .collect(Collectors.toList()));
     }
 
     /**
@@ -64,18 +71,26 @@ public class KafkaResponseHandler implements Closeable {
         final String responseTopic = registration.getResponseTopicName();
         log.info("Registering response handler for topic: {}", responseTopic);
 
+        // Check if the did subscribe to the given registration
+        if (!consumerService.isSubscribed(responseTopic)) {
+            // If not make sure we do
+            consumerService.subscribe(responseTopic);
+        }
+
+        // Lower case the correlation id
+        final String key = correlationId.toLowerCase();
+
         try {
             lock.writeLockAndExecute(() -> {
                 final RegistrationItem registrationItem = responseHandlers
                         .computeIfAbsent(responseTopic, k -> {
                             log.info("Creating new registration item for topic: {}", responseTopic);
-                            consumerService.subscribeForEvent(responseTopic, this::handleResponse);
                             return new RegistrationItem(registration, new ConcurrentHashMap<>());
                         });
-                if (registrationItem.responseHandlers.containsKey(correlationId)) {
-                    log.warn("Handler already registered for correlation id: {}", correlationId);
+                if (registrationItem.responseHandlers.containsKey(key)) {
+                    log.warn("Handler already registered for correlation id: {}", key);
                 } else {
-                    registrationItem.responseHandlers.put(correlationId, handler);
+                    registrationItem.responseHandlers.put(key, handler);
                 }
             });
         } catch (Exception e) {
@@ -85,7 +100,7 @@ public class KafkaResponseHandler implements Closeable {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
         consumerService.close();
     }
 
@@ -96,9 +111,16 @@ public class KafkaResponseHandler implements Closeable {
      * @param key     The key
      * @param message The message
      */
-    private void handleResponse(String topic, Map<String, Object> key, Map<String, Object> message) {
+    private void handleResponse(String topic, Map<String, Object> key, JsonNode message) {
         try {
             lock.writeLockAndExecute(() -> {
+                log.info("Handling response for topic: {}", topic);
+
+                if (!responseHandlers.containsKey(topic)) {
+                    log.info("No handlers for topic: {}", topic);
+                    return;
+                }
+
                 final RegistrationItem registrationItem = responseHandlers.get(topic);
                 final Schemas.Registration registration = registrationItem.registration;
                 final String correlationIdKey = registration.getCorrelationIdFieldName();
@@ -110,7 +132,7 @@ public class KafkaResponseHandler implements Closeable {
                         return;
                     }
 
-                    final String correlationId = (String) key.get(correlationIdKey);
+                    final String correlationId = ((String) key.get(correlationIdKey)).toLowerCase();
                     final ResponseHandler handler = handlers.get(correlationId);
                     if (handler != null) {
                         try {
@@ -125,6 +147,8 @@ public class KafkaResponseHandler implements Closeable {
                 } else {
                     log.warn("No handler for topic: {}", topic);
                 }
+
+                log.info("Response handled for topic: {}", topic);
             });
         } catch (Exception e) {
             log.error("Error processing message", e);

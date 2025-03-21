@@ -13,7 +13,6 @@ import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.errors.TopicExistsException;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
@@ -56,6 +55,7 @@ public class TopicManagement implements AutoCloseable {
 
         // Then register the schemas
         try {
+            
             SchemaUtils.registerSchema(topicName, keyClass, true, schemaRegistryClient);
             SchemaUtils.registerSchema(topicName, valueClass, false, schemaRegistryClient);
         } catch (IOException | RuntimeException | RestClientException e) {

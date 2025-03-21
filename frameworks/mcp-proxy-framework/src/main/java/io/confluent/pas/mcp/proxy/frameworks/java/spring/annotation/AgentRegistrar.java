@@ -161,7 +161,7 @@ public class AgentRegistrar implements InitializingBean, Closeable {
                 resource.keyClass(),
                 Schemas.ResourceRequest.class,
                 resource.responseClass());
-        ;
+
         return getInvocationHandler(method, bean, registration, subscriptionHandler);
     }
 

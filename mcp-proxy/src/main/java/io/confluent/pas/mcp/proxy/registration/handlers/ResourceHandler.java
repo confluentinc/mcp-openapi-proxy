@@ -1,6 +1,7 @@
 package io.confluent.pas.mcp.proxy.registration.handlers;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -132,7 +133,7 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
      * @param arguments the request arguments
      * @return a mono containing the response
      */
-    protected Mono<Map<String, Object>> sendRequest(Map<String, Object> arguments) {
+    protected Mono<JsonNode> sendRequest(Map<String, Object> arguments) {
         final String correlationId = UUID.randomUUID().toString();
 
         try {

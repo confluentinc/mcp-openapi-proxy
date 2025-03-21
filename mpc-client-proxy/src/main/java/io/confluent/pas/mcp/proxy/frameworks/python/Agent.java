@@ -112,8 +112,6 @@ public class Agent {
      */
     private void setupSubscriptionHandler(List<AgentToolHandler> agentToolHandlers) {
         agentToolHandlers.forEach(handler -> {
-
-
             final Schemas.Registration registration = new Schemas.Registration(
                     handler.mcpTool().name(),
                     handler.mcpTool().description(),

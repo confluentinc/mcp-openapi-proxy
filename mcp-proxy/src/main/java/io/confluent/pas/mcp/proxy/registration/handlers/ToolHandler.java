@@ -2,6 +2,7 @@ package io.confluent.pas.mcp.proxy.registration.handlers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
@@ -29,7 +30,7 @@ import java.util.concurrent.ExecutionException;
  */
 @Slf4j
 @AllArgsConstructor
-public class ToolHandler implements RegistrationHandler<Map<String, Object>, Map<String, Object>> {
+public class ToolHandler implements RegistrationHandler<Map<String, Object>, JsonNode> {
 
     private final static TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
@@ -84,7 +85,7 @@ public class ToolHandler implements RegistrationHandler<Map<String, Object>, Map
      * @param arguments the arguments to send
      * @return the response
      */
-    public Mono<Map<String, Object>> sendRequest(Map<String, Object> arguments) {
+    public Mono<JsonNode> sendRequest(Map<String, Object> arguments) {
         final String correlationId = UUID.randomUUID().toString();
 
         try {

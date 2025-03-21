@@ -2,198 +2,186 @@ package io.confluent.pas.mcp.proxy.registration.kafka;
 
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
-import io.confluent.pas.mcp.common.utils.AutoReadWriteLock;
-import io.confluent.pas.mcp.common.utils.Lazy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.errors.WakeupException;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * ConsumerService class that handles requests from Kafka topics.
- * This class manages Kafka consumers, subscribes to topics, and processes incoming messages.
+ * Consumer class for managing Kafka topic subscriptions and message processing.
  *
- * @param <K> Key type
- * @param <V> Value type
+ * @param <K> Key type for Kafka messages
+ * @param <V> Value type for Kafka messages
  */
 @Slf4j
 public class ConsumerService<K, V> implements Closeable {
 
-    private final KafkaConfiguration kafkaConfiguration;
-    private final Class<K> keyClass;
-    private final Class<V> requestClass;
-
-    private final ConcurrentHashMap<String, ConsumerServiceHandler<K, V>> subscriptions = new ConcurrentHashMap<>();
-    private final AtomicBoolean stopRequested = new AtomicBoolean(false);
-    private final AtomicBoolean shouldConsumerSubscribe = new AtomicBoolean(false);
-    private final AutoReadWriteLock lock = new AutoReadWriteLock();
-    private final Lazy<KafkaConsumer<K, V>> consumer = new Lazy<>(this::getNewConsumer);
     private final ExecutorService executorSvc = Executors.newSingleThreadExecutor();
+    private final KafkaConsumer<K, V> kafkaConsumer;
+
+    private final ConsumerServiceHandler<K, V> consumerServiceHandler;
+    private final List<String> topics = Collections.synchronizedList(new ArrayList<>());
+    private volatile boolean subscriptionUpdated = false;
+    private volatile boolean stopRequested = false;
 
     /**
-     * Constructor for ConsumerService.
+     * Constructs a Consumer instance with the specified Kafka configuration and message types.
      *
-     * @param kafkaConfiguration The Kafka configuration
-     * @param keyClass           The class type of the key
-     * @param requestClass       The class type of the request
+     * @param kafkaConfiguration Kafka configuration containing connection and auth details
+     * @param keyClass           Class type for message keys
+     * @param requestClass       Class type for message values
      */
     public ConsumerService(KafkaConfiguration kafkaConfiguration,
                            Class<K> keyClass,
-                           Class<V> requestClass) {
-        this.kafkaConfiguration = kafkaConfiguration;
-        this.keyClass = keyClass;
-        this.requestClass = requestClass;
-
-        // Start the consumer loop
-        stopRequested.set(false);
-        executorSvc.submit(this::runLoop);
-    }
-
-    /**
-     * Add a subscription to a topic.
-     *
-     * @param topic   The topic to subscribe to
-     * @param handler Subscription handler
-     * @throws IllegalArgumentException if the subscription already exists
-     */
-    public void subscribeForEvent(String topic, ConsumerServiceHandler<K, V> handler) throws IllegalArgumentException {
-        if (subscriptions.containsKey(topic)) {
-            return;
-        }
-
-        lock.writeLockAndExecute(() -> {
-            subscriptions.put(topic, handler);
-            shouldConsumerSubscribe.set(true);
-        });
-    }
-
-    /**
-     * Remove a subscription from a topic.
-     *
-     * @param topic The topic to unsubscribe from
-     */
-    public void unsubscribeForEvent(String topic) {
-        lock.writeLockAndExecute(() -> {
-            subscriptions.remove(topic);
-            shouldConsumerSubscribe.set(true);
-        });
-    }
-
-    /**
-     * Stop the service.
-     */
-    @Override
-    public void close() {
-        stopRequested.set(true);
-        executorSvc.shutdown();
-        try {
-            if (!executorSvc.awaitTermination(10, TimeUnit.SECONDS)) {
-                log.warn("Executor did not terminate in the specified time");
-            }
-        } catch (InterruptedException e) {
-            log.warn("Error stopping executor", e);
-        }
-
-        if (consumer.isInitialized()) {
-            consumer.get().close();
-        }
-
-        log.info("Stopped RequestService");
-    }
-
-    /**
-     * Topic subscription and consumer polling loop.
-     */
-    private void runLoop() {
-        log.info("Starting RequestService loop");
-
-        final KafkaConsumer<K, V> consumer = this.consumer.get();
-
-        while (!stopRequested.get()) {
-            if (!subscribeToTopics(consumer)) {
-                sleep();
-                continue;
-            }
-
-            consumer.poll(Duration.ofMillis(100))
-                    .forEach(record -> {
-                        final String topic = record.topic();
-
-                        lock.readLockAndExecute(() -> {
-                            ConsumerServiceHandler<K, V> handler = subscriptions.get(topic);
-                            if (handler != null) {
-                                try {
-                                    handler.onMessage(record.topic(), record.key(), record.value());
-                                } catch (Exception e) {
-                                    log.error("Failed to process message", e);
-                                }
-                            }
-                        });
-                    });
-        }
-    }
-
-    /**
-     * Subscribe to topics.
-     *
-     * @param consumer KafkaConsumer
-     * @return true if subscribed to topics
-     */
-    private boolean subscribeToTopics(KafkaConsumer<K, V> consumer) {
-        try {
-            return lock.readLockAndExecute(() -> {
-                if (!shouldConsumerSubscribe.get()) {
-                    return !consumer.subscription().isEmpty();
-                }
-
-                shouldConsumerSubscribe.set(false);
-                if (!consumer.subscription().isEmpty()) {
-                    // Unsubscribe from all topics
-                    consumer.unsubscribe();
-                }
-
-                if (subscriptions.isEmpty()) {
-                    log.info("No subscriptions");
-                    return false;
-                }
-
-                consumer.subscribe(subscriptions.keySet());
-                log.info("Subscribed to topics.");
-                return true;
-            });
-        } catch (Exception e) {
-            log.error("Error subscribing to topics", e);
-            return false;
-        }
-    }
-
-    /**
-     * Sleep for a second.
-     */
-    private void sleep() {
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            log.error("Error sleeping", e);
-        }
-    }
-
-    /**
-     * Create a new KafkaConsumer.
-     *
-     * @return the KafkaConsumer
-     */
-    private KafkaConsumer<K, V> getNewConsumer() {
-        return new KafkaConsumer<>(KafkaPropertiesFactory.getConsumerProperties(
+                           Class<V> requestClass,
+                           ConsumerServiceHandler<K, V> consumerServiceHandler) {
+        this.kafkaConsumer = new KafkaConsumer<>(KafkaPropertiesFactory.getConsumerProperties(
                 kafkaConfiguration,
                 false,
                 keyClass,
                 requestClass));
+        this.consumerServiceHandler = consumerServiceHandler;
+
+        executorSvc.submit(this::runLoop);
+    }
+
+    public boolean isSubscribed(String topic) {
+        return topics.contains(topic);
+    }
+
+    /**
+     * Subscribes to a Kafka topic with the specified handler.
+     *
+     * @param topic The topic to subscribe to
+     */
+    public void subscribe(String topic) {
+        if (topics.contains(topic)) {
+            throw new IllegalArgumentException("Subscription already exists for topic: " + topic);
+        }
+
+        topics.add(topic);
+        subscriptionUpdated = true;
+    }
+
+    /**
+     * Subscribes to a Kafka topic with the specified handler.
+     *
+     * @param topicsToAdd The topics to subscribe to
+     */
+    public void subscribe(Collection<String> topicsToAdd) {
+        topics.addAll(topicsToAdd);
+        subscriptionUpdated = true;
+    }
+
+    /**
+     * Unsubscribes from a Kafka topic.
+     *
+     * @param topic The topic to unsubscribe from
+     */
+    public void unsubscribe(String topic) {
+        topics.remove(topic);
+        subscriptionUpdated = true;
+    }
+
+    /**
+     * Closes the consumer, stopping the polling loop and releasing resources.
+     *
+     * @throws IOException if an error occurs while closing the consumer
+     */
+    @Override
+    public void close() throws IOException {
+        stopRequested = true;
+
+        try (kafkaConsumer) {
+            log.info("Kafka Consumer closed successfully.");
+        } catch (Exception e) {
+            log.error("Error closing Kafka Consumer", e);
+        }
+        
+        try {
+            boolean done = executorSvc.awaitTermination(10, TimeUnit.SECONDS);
+            if (!done) {
+                log.error("Executor did not terminate");
+            }
+        } catch (InterruptedException e) {
+            log.error("Error waiting for executor to terminate", e);
+        }
+        executorSvc.shutdown();
+    }
+
+    /**
+     * Main loop for polling Kafka messages and processing them.
+     */
+    private void runLoop() {
+        log.info("Starting Consumer Service");
+
+        while (!stopRequested) {
+            updateSubscriptions();
+            if (topics.isEmpty()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    log.warn("Interrupted while sleeping", e);
+                    Thread.currentThread().interrupt();
+                }
+
+                continue;
+            }
+
+            try {
+                var records = kafkaConsumer.poll(Duration.ofMillis(100));
+                records.forEach(this::processRecord);
+            } catch (WakeupException e) {
+                if (!stopRequested) {
+                    log.error("Unexpected WakeupException", e);
+                    throw e;
+                }
+            }
+        }
+
+        log.info("Consumer Service stopped");
+    }
+
+    /**
+     * Updates the Kafka topic subscriptions based on the current handlers.
+     */
+    private void updateSubscriptions() {
+        if (subscriptionUpdated) {
+            log.info("Updating subscriptions");
+            kafkaConsumer.unsubscribe();
+            if (!topics.isEmpty()) {
+                kafkaConsumer.subscribe(topics);
+            } else {
+                log.info("No topics to subscribe to");
+            }
+            subscriptionUpdated = false;
+        }
+    }
+
+    /**
+     * Processes a single Kafka record by invoking the appropriate handler.
+     *
+     * @param record The Kafka record to process
+     */
+    private void processRecord(ConsumerRecord<K, V> record) {
+        if (!topics.contains(record.topic())) {
+            log.warn("Received message from unregistered topic: {}", record.topic());
+            return;
+        }
+
+        try {
+            log.info("Processing message from topic: {}", record.topic());
+            consumerServiceHandler.onMessage(record.topic(), record.key(), record.value());
+        } catch (Exception e) {
+            log.error("Failed to process message", e);
+        }
     }
 }

@@ -26,7 +26,7 @@ public class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R ext
      * @param <R> the type of registration
      */
     public interface Handler<K extends Schemas.RegistrationKey, R extends Schemas.Registration> {
-        void handleRegistration(K key, R value);
+        void handleRegistrations(Map<K, R> registrations);
     }
 
     private final Handler<K, R> handler;
@@ -61,13 +61,7 @@ public class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R ext
             log.info("No registration found in the cache, registering schemas.");
             shouldCreateSchemas = true;
         } else if (!accumulator.isEmpty()) {
-            accumulator.forEach((k, v) -> {
-                if (v != null) {
-                    // Only register the last event for each key if not null
-                    handler.handleRegistration(k, v);
-                }
-            });
-
+            handler.handleRegistrations(accumulator);
             accumulator.clear();
         }
 
@@ -96,7 +90,7 @@ public class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R ext
         // If the cache is not initialized, store the registration in the accumulator
         // This will help to keep the last event for each key
         if (initialized) {
-            handler.handleRegistration(key, value);
+            handler.handleRegistrations(Map.of(key, value));
         } else {
             accumulator.put(key, value);
         }
