@@ -35,9 +35,6 @@ import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Shared ObjectMapper instance for JSON serialization and deserialization.
- */
 @Slf4j
 @Component
 public class Agent {

@@ -28,9 +28,17 @@ public class AgentRequestHandler {
      * Configuration containing mcpTool settings
      */
     private final AgentConfiguration.ToolConfiguration tool;
-
+    /**
+     * Deserializer for converting JSON responses to the expected format
+     */
     private final JsonResponseDeserializer deserializer;
 
+    /**
+     * Constructs an AgentRequestHandler instance.
+     *
+     * @param mcpAsyncClient The async client for communicating with MCP
+     * @param tool           Configuration object containing mcpTool specifications
+     */
     public AgentRequestHandler(McpAsyncClient mcpAsyncClient, AgentConfiguration.ToolConfiguration tool) {
         this.mcpAsyncClient = mcpAsyncClient;
         this.tool = tool;

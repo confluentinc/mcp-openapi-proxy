@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.proxy.registration.kafka.ProducerService;
 import io.confluent.pas.mcp.common.services.Schemas;
-import io.confluent.pas.mcp.proxy.registration.kafka.KafkaResponseHandler;
+import io.confluent.pas.mcp.proxy.registration.kafka.ConsumerService;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
@@ -24,16 +24,16 @@ import java.util.concurrent.ExecutionException;
 @Component
 public class RequestResponseHandler implements DisposableBean {
 
-    private final ProducerService<JsonNode, JsonNode> producerService;
-    private final KafkaResponseHandler kafkaResponseHandler;
+    private final ProducerService producerService;
+    private final ConsumerService consumerService;
 
     public RequestResponseHandler(@Autowired KafkaConfiguration kafkaConfiguration) {
-        this.kafkaResponseHandler = new KafkaResponseHandler(kafkaConfiguration);
-        this.producerService = new ProducerService<>(kafkaConfiguration);
+        this.consumerService = new ConsumerService(kafkaConfiguration);
+        this.producerService = new ProducerService(kafkaConfiguration);
     }
 
     public void addRegistrations(Collection<Schemas.Registration> registrations) {
-        kafkaResponseHandler.addRegistrations(registrations);
+        consumerService.addRegistrations(registrations);
     }
 
     /**
@@ -55,7 +55,7 @@ public class RequestResponseHandler implements DisposableBean {
         Sinks.One<JsonNode> sink = Sinks.one();
 
         // Register the response handler
-        kafkaResponseHandler.registerResponseHandler(registration, correlationId, sink::tryEmitValue);
+        consumerService.registerResponseHandler(registration, correlationId, sink::tryEmitValue);
 
         // Create the Key
         final Map<String, Object> key = Map.of(registration.getCorrelationIdFieldName(), correlationId);
@@ -71,7 +71,7 @@ public class RequestResponseHandler implements DisposableBean {
 
     @Override
     public void destroy() throws Exception {
-        kafkaResponseHandler.close();
+        consumerService.close();
         producerService.close();
     }
 }

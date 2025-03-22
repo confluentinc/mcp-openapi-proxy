@@ -1,181 +1,138 @@
 package io.confluent.pas.mcp.proxy.registration.kafka;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
-import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
+import io.confluent.pas.mcp.common.services.Schemas;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.errors.WakeupException;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
- * Consumer class for managing Kafka topic subscriptions and message processing.
- *
- * @param <K> Key type for Kafka messages
- * @param <V> Value type for Kafka messages
+ * Handle responses from Kafka topics.
  */
 @Slf4j
-public class ConsumerService<K, V> implements Closeable {
-
-    private final ExecutorService executorSvc = Executors.newSingleThreadExecutor();
-    private final KafkaConsumer<K, V> kafkaConsumer;
-
-    private final ConsumerServiceHandler<K, V> consumerServiceHandler;
-    private final List<String> topics = Collections.synchronizedList(new ArrayList<>());
-    private volatile boolean subscriptionUpdated = false;
-    private volatile boolean stopRequested = false;
+public class ConsumerService implements Closeable {
 
     /**
-     * Constructs a Consumer instance with the specified Kafka configuration and message types.
-     *
-     * @param kafkaConfiguration Kafka configuration containing connection and auth details
-     * @param keyClass           Class type for message keys
-     * @param requestClass       Class type for message values
+     * Registration Handler.
      */
-    public ConsumerService(KafkaConfiguration kafkaConfiguration,
-                           Class<K> keyClass,
-                           Class<V> requestClass,
-                           ConsumerServiceHandler<K, V> consumerServiceHandler) {
-        this.kafkaConsumer = new KafkaConsumer<>(KafkaPropertiesFactory.getConsumerProperties(
+    public interface ResponseHandler {
+        void handle(JsonNode response);
+    }
+
+    /**
+     * Registration Item.
+     *
+     * @param registration     the registration
+     * @param responseHandlers the response handlers
+     */
+    public record RegistrationItem(Schemas.Registration registration,
+                                   Map<String, ResponseHandler> responseHandlers) {
+    }
+
+    @Getter
+    private final Map<String, RegistrationItem> responseHandlers = new ConcurrentHashMap<>();
+    private final Consumer<JsonNode, JsonNode> consumer;
+
+    public ConsumerService(KafkaConfiguration kafkaConfiguration) {
+        this.consumer = new Consumer<>(
                 kafkaConfiguration,
-                false,
-                keyClass,
-                requestClass));
-        this.consumerServiceHandler = consumerServiceHandler;
-
-        executorSvc.submit(this::runLoop);
+                JsonNode.class,
+                JsonNode.class,
+                this::handleResponse);
     }
 
-    public boolean isSubscribed(String topic) {
-        return topics.contains(topic);
+    public ConsumerService(Consumer<JsonNode, JsonNode> consumer) {
+        this.consumer = consumer;
+    }
+
+    public void addRegistrations(Collection<Schemas.Registration> registrations) {
+        consumer.subscribe(registrations
+                .stream()
+                .map(Schemas.Registration::getResponseTopicName)
+                .collect(Collectors.toList()));
     }
 
     /**
-     * Subscribes to a Kafka topic with the specified handler.
+     * Register a response handler for a topic.
      *
-     * @param topic The topic to subscribe to
+     * @param registration  the registration
+     * @param correlationId the correlation id
+     * @param handler       the handler
      */
-    public void subscribe(String topic) {
-        if (topics.contains(topic)) {
-            throw new IllegalArgumentException("Subscription already exists for topic: " + topic);
+    public void registerResponseHandler(Schemas.Registration registration,
+                                        String correlationId,
+                                        ResponseHandler handler) {
+        final String responseTopic = registration.getResponseTopicName();
+        log.info("Registering response handler for topic: {}", responseTopic);
+
+        if (!consumer.isSubscribed(responseTopic)) {
+            consumer.subscribe(responseTopic);
         }
 
-        topics.add(topic);
-        subscriptionUpdated = true;
+        final String key = correlationId.toLowerCase();
+
+        responseHandlers.compute(responseTopic, (topic, registrationItem) -> {
+            if (registrationItem == null) {
+                log.info("Creating new registration item for topic: {}", responseTopic);
+                registrationItem = new RegistrationItem(registration, new ConcurrentHashMap<>());
+            }
+            if (registrationItem.responseHandlers.containsKey(key)) {
+                log.warn("Handler already registered for correlation id: {}", key);
+            } else {
+                registrationItem.responseHandlers.put(key, handler);
+            }
+            return registrationItem;
+        });
     }
 
-    /**
-     * Subscribes to a Kafka topic with the specified handler.
-     *
-     * @param topicsToAdd The topics to subscribe to
-     */
-    public void subscribe(Collection<String> topicsToAdd) {
-        topics.addAll(topicsToAdd);
-        subscriptionUpdated = true;
-    }
-
-    /**
-     * Unsubscribes from a Kafka topic.
-     *
-     * @param topic The topic to unsubscribe from
-     */
-    public void unsubscribe(String topic) {
-        topics.remove(topic);
-        subscriptionUpdated = true;
-    }
-
-    /**
-     * Closes the consumer, stopping the polling loop and releasing resources.
-     *
-     * @throws IOException if an error occurs while closing the consumer
-     */
     @Override
     public void close() throws IOException {
-        stopRequested = true;
-        
-        try {
-            boolean done = executorSvc.awaitTermination(10, TimeUnit.SECONDS);
-            if (!done) {
-                log.error("Executor did not terminate");
-            }
-        } catch (InterruptedException e) {
-            log.error("Error waiting for executor to terminate", e);
-        }
-        executorSvc.shutdown();
+        consumer.close();
     }
 
     /**
-     * Main loop for polling Kafka messages and processing them.
-     */
-    private void runLoop() {
-        log.info("Starting Consumer Service");
-
-        while (!stopRequested) {
-            updateSubscriptions();
-            if (topics.isEmpty()) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    log.warn("Interrupted while sleeping", e);
-                    Thread.currentThread().interrupt();
-                }
-
-                continue;
-            }
-
-            try {
-                var records = kafkaConsumer.poll(Duration.ofMillis(100));
-                records.forEach(this::processRecord);
-            } catch (WakeupException e) {
-                if (!stopRequested) {
-                    log.error("Unexpected WakeupException", e);
-                    throw e;
-                }
-            }
-        }
-
-        log.info("Consumer Service stopped");
-    }
-
-    /**
-     * Updates the Kafka topic subscriptions based on the current handlers.
-     */
-    private void updateSubscriptions() {
-        if (subscriptionUpdated) {
-            log.info("Updating subscriptions");
-            kafkaConsumer.unsubscribe();
-            if (!topics.isEmpty()) {
-                kafkaConsumer.subscribe(topics);
-            } else {
-                log.info("No topics to subscribe to");
-            }
-            subscriptionUpdated = false;
-        }
-    }
-
-    /**
-     * Processes a single Kafka record by invoking the appropriate handler.
+     * Handle a response.
      *
-     * @param record The Kafka record to process
+     * @param topic   The topic
+     * @param key     The key
+     * @param message The message
      */
-    private void processRecord(ConsumerRecord<K, V> record) {
-        if (!topics.contains(record.topic())) {
-            log.warn("Received message from unregistered topic: {}", record.topic());
+    void handleResponse(String topic, JsonNode key, JsonNode message) {
+        log.info("Handling response for topic: {}", topic);
+
+        RegistrationItem registrationItem = responseHandlers.get(topic);
+        if (registrationItem == null) {
+            log.info("No handlers for topic: {}", topic);
             return;
         }
 
-        try {
-            log.info("Processing message from topic: {}", record.topic());
-            consumerServiceHandler.onMessage(record.topic(), record.key(), record.value());
-        } catch (Exception e) {
-            log.error("Failed to process message", e);
+        String correlationIdKey = registrationItem.registration.getCorrelationIdFieldName();
+        Map<String, ResponseHandler> handlers = registrationItem.responseHandlers;
+
+        if (!key.has(correlationIdKey)) {
+            log.warn("No correlation id in key: {}", key);
+            return;
         }
+
+        String correlationId = key.get(correlationIdKey).asText().toLowerCase();
+        ResponseHandler handler = handlers.get(correlationId);
+        if (handler != null) {
+            try {
+                handler.handle(message);
+            } catch (Exception e) {
+                log.error("Error handling message", e);
+            }
+            handlers.remove(correlationId);
+        } else {
+            log.warn("No handler for correlation id: {}", correlationId);
+        }
+
+        log.info("Response handled for topic: {}", topic);
     }
 }

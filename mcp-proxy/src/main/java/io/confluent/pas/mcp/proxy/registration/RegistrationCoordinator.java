@@ -119,7 +119,7 @@ public class RegistrationCoordinator implements DisposableBean {
         }
 
         if (handlers.containsKey(registrationName)) {
-            log.info("Registration already exists, updating tool: {}", registrationName);
+            log.info("Registration already exists, updating: {}", registrationName);
             unregisterHandler(registrationName);
         } else {
             log.info("Received new registration: {}", registrationName);
@@ -169,7 +169,7 @@ public class RegistrationCoordinator implements DisposableBean {
     }
 
     @Override
-    public void destroy() throws Exception {
+    public void destroy() {
         registrationService.close();
     }
 }

@@ -1,5 +1,6 @@
 package io.confluent.pas.mcp.proxy.registration.kafka;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
 import io.confluent.pas.mcp.common.utils.Lazy;
@@ -14,16 +15,16 @@ import java.io.Closeable;
 /**
  * ProducerService class that handles sending messages to Kafka topics.
  * This class uses a lazy-initialized KafkaProducer to send messages asynchronously.
- *
- * @param <K> the type of the key
- * @param <V> the type of the value
  */
 @Slf4j
 @AllArgsConstructor
-public class ProducerService<K, V> implements Closeable {
+public class ProducerService implements Closeable {
 
-    private final KafkaConfiguration kafkaConfiguration;
-    private final Lazy<KafkaProducer<K, V>> producer = new Lazy<>(this::createNewProducer);
+    private final Lazy<KafkaProducer<JsonNode, JsonNode>> producer;
+
+    public ProducerService(KafkaConfiguration kafkaConfiguration) {
+        this(new Lazy<>(() -> new KafkaProducer<>(KafkaPropertiesFactory.getProducerProperties(kafkaConfiguration))));
+    }
 
     /**
      * Send a message to a topic.
@@ -33,9 +34,9 @@ public class ProducerService<K, V> implements Closeable {
      * @param value the value
      * @return a Mono that will complete when the message is sent
      */
-    public Mono<Void> send(String topic, K key, V value) {
+    public Mono<Void> send(String topic, JsonNode key, JsonNode value) {
         return Mono.create(sink -> {
-            final ProducerRecord<K, V> record = new ProducerRecord<>(topic, key, value);
+            final ProducerRecord<JsonNode, JsonNode> record = new ProducerRecord<>(topic, key, value);
 
             producer.get()
                     .send(record, (metadata, exception) -> {
@@ -47,15 +48,6 @@ public class ProducerService<K, V> implements Closeable {
                         }
                     });
         });
-    }
-
-    /**
-     * Create a new KafkaProducer.
-     *
-     * @return the KafkaProducer
-     */
-    private KafkaProducer<K, V> createNewProducer() {
-        return new KafkaProducer<>(KafkaPropertiesFactory.getProducerProperties(kafkaConfiguration));
     }
 
     @Override
