@@ -137,7 +137,7 @@ tool:
   request_topic: "<request_topic_name>"   # Optional, defaults to "<tool_name>_request"
   response_topic: "<response_topic_name>" # Optional, defaults to "<tool_name>_response"
   output_schema: "<JSON schema string>"
-  # Additional tool properties as needed
+  # Additional mcpTool properties as needed
 ```
 
 ### Example: Configuration for Python MCP Server

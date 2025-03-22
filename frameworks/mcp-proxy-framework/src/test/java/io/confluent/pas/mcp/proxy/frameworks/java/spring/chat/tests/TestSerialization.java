@@ -1,7 +1,7 @@
 package io.confluent.pas.mcp.proxy.frameworks.java.spring.chat.tests;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.chat.KafkaChatMemory;
 import org.junit.Assert;
 import org.junit.Test;
@@ -35,7 +35,7 @@ public class TestSerialization {
 
     @Test
     public void testSerialization() throws JsonProcessingException {
-        final KafkaChatMemory.Memory messages = new ObjectMapper().readValue(MESSAGES, KafkaChatMemory.Memory.class);
+        final KafkaChatMemory.Memory messages = JsonUtils.toObject(MESSAGES, KafkaChatMemory.Memory.class);
 
         final List<Message> msg = messages.stream().map(KafkaChatMemory.MemoryMessage::toMessage).toList();
 

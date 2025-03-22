@@ -155,3 +155,4 @@ services/websocket/src/main/resources/static/
 .python-version
 pyproject.toml
 uv.lock
+logs/

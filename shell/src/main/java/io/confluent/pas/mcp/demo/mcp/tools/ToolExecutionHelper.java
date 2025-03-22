@@ -1,23 +1,16 @@
 package io.confluent.pas.mcp.demo.mcp.tools;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class ToolExecutionHelper {
-
-    private final static ObjectMapper MAPPER = new ObjectMapper();
-    private final static TypeReference<HashMap<String, Object>> TYPE_REFERENCE = new TypeReference<>() {
-    };
     private static final String EXECUTION_ERROR_MESSAGE = "There was an error executing the tool";
 
     /**
@@ -49,7 +42,7 @@ public class ToolExecutionHelper {
         final McpSchema.TextContent errorContent = (McpSchema.TextContent) contents.stream().filter(content -> content.type().equals("text"))
                 .findFirst()
                 .orElseThrow();
-        final Map<String, Object> err = MAPPER.readValue(errorContent.text(), TYPE_REFERENCE);
+        final Map<String, Object> err = JsonUtils.toMap(errorContent.text());
 
         String errorMessage = "";
         if (err.get("message") != null) {

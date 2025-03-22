@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.proxy.registration.kafka.ProducerService;
 import io.confluent.pas.mcp.common.services.Schemas;
-import io.confluent.pas.mcp.proxy.registration.internal.KafkaResponseHandler;
+import io.confluent.pas.mcp.proxy.registration.kafka.KafkaResponseHandler;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -31,6 +32,10 @@ public class RequestResponseHandler implements DisposableBean {
         this.producerService = new ProducerService<>(kafkaConfiguration);
     }
 
+    public void addRegistrations(Collection<Schemas.Registration> registrations) {
+        kafkaResponseHandler.addRegistrations(registrations);
+    }
+
     /**
      * Send a request to a topic and wait for a response
      *
@@ -42,12 +47,12 @@ public class RequestResponseHandler implements DisposableBean {
      * @throws ExecutionException   if the request fails
      * @throws InterruptedException if the request is interrupted
      */
-    public Mono<Map<String, Object>> sendRequestResponse(Schemas.Registration registration,
-                                                         RegistrationSchemas schemas,
-                                                         String correlationId,
-                                                         Map<String, Object> request)
+    public Mono<JsonNode> sendRequestResponse(Schemas.Registration registration,
+                                              RegistrationSchemas schemas,
+                                              String correlationId,
+                                              Map<String, Object> request)
             throws ExecutionException, InterruptedException {
-        Sinks.One<Map<String, Object>> sink = Sinks.one();
+        Sinks.One<JsonNode> sink = Sinks.one();
 
         // Register the response handler
         kafkaResponseHandler.registerResponseHandler(registration, correlationId, sink::tryEmitValue);

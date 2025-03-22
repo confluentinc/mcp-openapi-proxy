@@ -1,9 +1,9 @@
-package io.confluent.pas.mcp.proxy.frameworks.python;
+package io.confluent.pas.mcp.proxy.frameworks.client;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
-import io.confluent.pas.mcp.proxy.frameworks.python.exceptions.ConfigurationException;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
+import io.confluent.pas.mcp.proxy.frameworks.client.exceptions.ConfigurationException;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -63,8 +63,8 @@ public class AgentConfiguration {
     @JsonProperty("arguments")
     private List<String> arguments;
 
-    @JsonProperty("tool")
-    private ToolConfiguration tool;
+    @JsonProperty("mcpTool")
+    private List<ToolConfiguration> tools;
 
     /**
      * Parses the agent configuration from a file.
@@ -93,15 +93,30 @@ public class AgentConfiguration {
         }
     }
 
+    /**
+     * Parses the agent configuration from a JSON file.
+     *
+     * @param file     The configuration file.
+     * @param filePath The path to the configuration file.
+     * @return The parsed agent configuration.
+     * @throws ConfigurationException If there is an issue parsing the configuration.
+     */
     private static AgentConfiguration parseJsonConfiguration(File file, String filePath) throws ConfigurationException {
         try {
-            final ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(file, AgentConfiguration.class);
+            return JsonUtils.toObject(file, AgentConfiguration.class);
         } catch (IOException e) {
             throw new ConfigurationException("Error parsing configuration file: " + filePath, e);
         }
     }
 
+    /**
+     * Parses the agent configuration from a YAML file.
+     *
+     * @param file     The configuration file.
+     * @param filePath The path to the configuration file.
+     * @return The parsed agent configuration.
+     * @throws ConfigurationException If there is an issue parsing the configuration.
+     */
     private static AgentConfiguration parseYamlConfiguration(File file, String filePath) throws ConfigurationException {
         Yaml yaml = new Yaml();
         try {

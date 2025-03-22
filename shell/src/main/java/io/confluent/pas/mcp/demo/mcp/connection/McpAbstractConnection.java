@@ -1,9 +1,8 @@
 package io.confluent.pas.mcp.demo.mcp.connection;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.confluent.pas.mcp.demo.mcp.McpServerConnection;
 import io.confluent.pas.mcp.demo.mcp.tools.ToolExecutionHelper;
 import io.modelcontextprotocol.client.McpAsyncClient;
@@ -15,7 +14,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,11 +24,6 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @Getter
 public abstract class McpAbstractConnection implements McpServerConnection {
-
-    private final static ObjectMapper MAPPER = new ObjectMapper();
-    private final static TypeReference<HashMap<String, Object>> TYPE_REFERENCE = new TypeReference<>() {
-    };
-
     private McpAsyncClient client;
     private List<McpSchema.Tool> tools;
     private McpSchema.InitializeResult initializeResult;
@@ -54,7 +47,7 @@ public abstract class McpAbstractConnection implements McpServerConnection {
     public String executeTool(ToolExecutionRequest request) {
         final Map<String, Object> arguments;
         try {
-            arguments = MAPPER.readValue(request.arguments(), TYPE_REFERENCE);
+            arguments = JsonUtils.toMap(request.arguments());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

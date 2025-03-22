@@ -1,10 +1,10 @@
 package io.confluent.pas.mcp.proxy.registration.handlers;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
 import io.confluent.pas.mcp.proxy.registration.RequestResponseHandler;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
@@ -27,13 +27,6 @@ import java.util.concurrent.ExecutionException;
 @Slf4j
 @AllArgsConstructor
 public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequest, Schemas.ResourceResponse> {
-
-    // Type reference for deserializing request body to a Map
-    private final static TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
-    };
-    // ObjectMapper instance for JSON processing
-    private final static ObjectMapper MAPPER = new ObjectMapper();
-
     @Getter
     private final Schemas.ResourceRegistration registration;
     @Getter
@@ -120,10 +113,10 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
 
     @Override
     public Mono<Schemas.ResourceResponse> sendRequest(Schemas.ResourceRequest request) {
-        final Map<String, Object> arguments = MAPPER.convertValue(request, MAP_TYPE);
+        final Map<String, Object> arguments = JsonUtils.toMap(request);
 
         return sendRequest(arguments)
-                .map(response -> MAPPER.convertValue(response, Schemas.ResourceResponse.class));
+                .map(response -> JsonUtils.toObject(response, Schemas.ResourceResponse.class));
     }
 
     /**
@@ -132,7 +125,7 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
      * @param arguments the request arguments
      * @return a mono containing the response
      */
-    protected Mono<Map<String, Object>> sendRequest(Map<String, Object> arguments) {
+    protected Mono<JsonNode> sendRequest(Map<String, Object> arguments) {
         final String correlationId = UUID.randomUUID().toString();
 
         try {
@@ -154,20 +147,20 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
      * @param sink    the sink to send the response to
      */
     protected void sendRequest(McpSchema.ReadResourceRequest request, MonoSink<McpSchema.ReadResourceResult> sink) {
-        final Map<String, Object> arguments = MAPPER.convertValue(request, MAP_TYPE);
+        final Map<String, Object> arguments = JsonUtils.toMap(request);
 
         sendRequest(arguments).subscribe(response -> {
             final Schemas.ResourceResponse.ResponseType responseType = Schemas.ResourceResponse.ResponseType.fromValue(response.get("type").toString());
 
             final McpSchema.ResourceContents content;
             if (responseType == Schemas.ResourceResponse.ResponseType.BLOB) {
-                Schemas.BlobResourceResponse resource = MAPPER.convertValue(response, Schemas.BlobResourceResponse.class);
+                Schemas.BlobResourceResponse resource = JsonUtils.toObject(response, Schemas.BlobResourceResponse.class);
                 content = new McpSchema.BlobResourceContents(
                         resource.getUri(),
                         resource.getMimeType(),
                         resource.getBlob());
             } else {
-                Schemas.TextResourceResponse resource = MAPPER.convertValue(response, Schemas.TextResourceResponse.class);
+                Schemas.TextResourceResponse resource = JsonUtils.toObject(response, Schemas.TextResourceResponse.class);
                 content = new McpSchema.TextResourceContents(
                         resource.getUri(),
                         resource.getMimeType(),

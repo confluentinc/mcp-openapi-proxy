@@ -42,7 +42,7 @@ public class RegistrationCoordinator implements DisposableBean {
                 kafkaConfiguration,
                 Schemas.RegistrationKey.class,
                 Schemas.Registration.class,
-                this::handleRegistration);
+                this::onRegistration);
     }
 
     /**
@@ -96,9 +96,15 @@ public class RegistrationCoordinator implements DisposableBean {
     /**
      * Handle a new registration
      *
-     * @param registration The registration
+     * @param registrations The registrations
      */
-    private void handleRegistration(Schemas.RegistrationKey key, Schemas.Registration registration) {
+    private void onRegistration(Map<Schemas.RegistrationKey, Schemas.Registration> registrations) {
+        requestResponseHandler.addRegistrations(registrations.values());
+
+        registrations.forEach(this::onRegistration);
+    }
+
+    private void onRegistration(Schemas.RegistrationKey key, Schemas.Registration registration) {
         final String registrationName = key.getName();
 
         // Unregister?
@@ -126,11 +132,11 @@ public class RegistrationCoordinator implements DisposableBean {
 
             handler.register(mcpServer)
                     .doOnSuccess(v -> {
-                        log.info("Added new tool registration: {}", registrationName);
+                        log.info("Added registration: {}", registrationName);
                         handlers.put(registrationName, handler);
                     })
                     .doOnError(e -> {
-                        log.error("Error adding tool registration: {}", registrationName, e);
+                        log.error("Error adding registration: {}", registrationName, e);
                         handlers.remove(registrationName);
                     })
                     .block();
@@ -145,13 +151,20 @@ public class RegistrationCoordinator implements DisposableBean {
      * @param registrationName The registration name
      */
     private void unregisterHandler(String registrationName) {
+        log.info("Unregistering {}", registrationName);
+
         final RegistrationHandler<?, ?> handler = handlers.get(registrationName);
+        if (handler == null) {
+            log.warn("No handler with name {}", registrationName);
+            return;
+        }
+
         handler.unregister(mcpServer)
                 .doOnSuccess(v -> {
-                    log.info("Removed tool registration: {}", registrationName);
+                    log.info("Unregistered {}", registrationName);
                     handlers.remove(registrationName);
                 })
-                .doOnError(e -> log.error("Error removing tool registration: {}", registrationName, e))
+                .doOnError(e -> log.error("Error unregistering {}", registrationName, e))
                 .block();
     }
 
