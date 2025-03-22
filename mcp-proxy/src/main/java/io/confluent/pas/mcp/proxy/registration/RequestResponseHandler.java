@@ -27,15 +27,20 @@ public class RequestResponseHandler implements DisposableBean {
     private final ProducerService producerService;
     private final ConsumerService consumerService;
 
-    public RequestResponseHandler(@Autowired KafkaConfiguration kafkaConfiguration) {
-        this.consumerService = new ConsumerService(kafkaConfiguration);
-        this.producerService = new ProducerService(kafkaConfiguration);
+    @Autowired
+    public RequestResponseHandler(KafkaConfiguration kafkaConfiguration) {
+        this(new ProducerService(kafkaConfiguration), new ConsumerService(kafkaConfiguration));
+    }
+
+    public RequestResponseHandler(ProducerService producerService, ConsumerService consumerService) {
+        this.producerService = producerService;
+        this.consumerService = consumerService;
     }
 
     public void addRegistrations(Collection<Schemas.Registration> registrations) {
         consumerService.addRegistrations(registrations);
     }
-    
+
     /**
      * Send a request to a topic and wait for a response
      *
