@@ -35,7 +35,7 @@ public class RequestResponseHandler implements DisposableBean {
     public void addRegistrations(Collection<Schemas.Registration> registrations) {
         consumerService.addRegistrations(registrations);
     }
-
+    
     /**
      * Send a request to a topic and wait for a response
      *

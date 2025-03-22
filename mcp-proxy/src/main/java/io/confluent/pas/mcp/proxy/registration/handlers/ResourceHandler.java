@@ -67,7 +67,7 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
      * @param annotations the annotations for the resource
      * @return the async resource registration
      */
-    private McpServerFeatures.AsyncResourceRegistration getAsyncResourceRegistration(McpSchema.Annotations annotations) {
+    McpServerFeatures.AsyncResourceRegistration getAsyncResourceRegistration(McpSchema.Annotations annotations) {
         McpSchema.Resource resource = new McpSchema.Resource(
                 registration.getUrl(),
                 registration.getName(),
