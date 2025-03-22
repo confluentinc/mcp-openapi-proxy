@@ -18,7 +18,7 @@ import java.util.ArrayDeque;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class AuthManagerTest {
+class AuthManagerTests {
 
     @Mock
     private KafkaConfiguration kafkaConfiguration;
