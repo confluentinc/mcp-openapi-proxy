@@ -130,7 +130,7 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
         log.info("Subscribing for registration: {}", registration.getName());
 
         try {
-            createTopicsForRegistration(registration, keyClass, requestClass, responseClass);
+            createTopics(registration, keyClass, requestClass, responseClass);
             startSubscription(registration, handler);
         } catch (Exception e) {
             throw new SubscriptionException("Failed to subscribe with registration: " + registration.getName(), e);
@@ -206,10 +206,10 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
     /**
      * Creates topics using class types.
      */
-    private <T, U> void createTopicsForRegistration(Schemas.Registration registration,
-                                                    Class<K> keyClass,
-                                                    Class<T> requestClass,
-                                                    Class<U> responseClass) throws Exception {
+    private <T, U> void createTopics(Schemas.Registration registration,
+                                     Class<K> keyClass,
+                                     Class<T> requestClass,
+                                     Class<U> responseClass) throws Exception {
         try (TopicManagement topicManagement = topicManagementSupplier.get(); topicManagement) {
             topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestClass);
             topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseClass);

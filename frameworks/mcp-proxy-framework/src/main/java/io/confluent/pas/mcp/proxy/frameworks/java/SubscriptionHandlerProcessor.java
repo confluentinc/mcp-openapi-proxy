@@ -29,7 +29,7 @@ public class SubscriptionHandlerProcessor<K extends Key, REQ, RES> implements Pr
         subscriptionHandler.onRequest(request);
     }
 
-    private void sendResponse(Response<K, RES> response) {
+    void sendResponse(Response<K, RES> response) {
         context.forward(new Record<>(
                 response.key(),
                 response.response(),

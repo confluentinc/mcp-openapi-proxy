@@ -38,19 +38,7 @@ public interface TopicManagement extends AutoCloseable {
      */
     <K> void createTopic(String topicName, Class<K> keyClass, JsonSchema valueSchema)
             throws TopicManagementException, ExecutionException, InterruptedException, TimeoutException;
-
-    /**
-     * Creates a Kafka topic with the specified name.
-     *
-     * @param topic the name of the topic to create
-     * @throws TopicManagementException if there is an error managing the topic
-     * @throws ExecutionException       if there is an error during execution
-     * @throws InterruptedException     if the thread is interrupted
-     * @throws TimeoutException         if the operation times out
-     */
-    void createTopic(String topic)
-            throws TopicManagementException, InterruptedException, ExecutionException, TimeoutException;
-
+    
     /**
      * Closes the topic management resources.
      *

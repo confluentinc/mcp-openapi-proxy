@@ -1,5 +1,6 @@
 package io.confluent.pas.mcp.proxy.frameworks.java;
 
+import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.RegistrationService;
 import io.confluent.pas.mcp.common.services.Schemas;
@@ -14,7 +15,7 @@ import org.mockito.MockitoAnnotations;
 
 import static org.mockito.Mockito.*;
 
-public class SubscriptionHandlerTests {
+public class SubscriptionHandlerTest {
 
     private record Request(int a, int b) {
     }
@@ -80,6 +81,34 @@ public class SubscriptionHandlerTests {
 
         verify(topicManagement, times(1)).createTopic(eq("requestTopic"), any(Class.class), any(Class.class));
         verify(topicManagement, times(1)).createTopic(eq("responseTopic"), any(Class.class), any(Class.class));
+        verify(topicManagement, times(2)).close();
+        verify(registrationService, times(1)).isRegistered(any(Schemas.RegistrationKey.class));
+        verify(registrationService, times(1)).register(any(Schemas.RegistrationKey.class), any(Schemas.Registration.class));
+    }
+
+    @Test
+    public void testSubscribeWithSchema() throws Exception {
+        final String reqSchema = "{\"type\":\"record\",\"name\":\"Request\",\"fields\":[{\"name\":\"a\",\"type\":\"int\"},{\"name\":\"b\",\"type\":\"int\"}]}";
+        final String resSchema = "{\"type\":\"record\",\"name\":\"Response\",\"fields\":[{\"name\":\"result\",\"type\":\"int\"}]}";
+
+        subscriptionHandler.subscribeWith(
+                new Schemas.Registration(
+                        "Name",
+                        "Description",
+                        "requestTopic",
+                        "responseTopic",
+                        "corrleationId"
+                ),
+                new JsonSchema(reqSchema),
+                new JsonSchema(resSchema),
+                (request) -> {
+                    request.respond(new Response(request.getRequest().a() + request.getRequest().b()))
+                            .block();
+                }
+        );
+
+        verify(topicManagement, times(1)).createTopic(eq("requestTopic"), any(Class.class), any(JsonSchema.class));
+        verify(topicManagement, times(1)).createTopic(eq("responseTopic"), any(Class.class), any(JsonSchema.class));
         verify(topicManagement, times(2)).close();
         verify(registrationService, times(1)).isRegistered(any(Schemas.RegistrationKey.class));
         verify(registrationService, times(1)).register(any(Schemas.RegistrationKey.class), any(Schemas.Registration.class));

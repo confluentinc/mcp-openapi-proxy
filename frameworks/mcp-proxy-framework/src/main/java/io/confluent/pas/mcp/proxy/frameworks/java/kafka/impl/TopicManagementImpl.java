@@ -106,8 +106,7 @@ public class TopicManagementImpl implements TopicManagement {
      * @throws ExecutionException       If the topic creation fails
      * @throws TimeoutException         If the topic creation times out
      */
-    @Override
-    public void createTopic(String topic)
+    protected void createTopic(String topic)
             throws TopicManagementException, InterruptedException, ExecutionException, TimeoutException {
         final AdminClient admin = kafkaAdminClient.get();
 
