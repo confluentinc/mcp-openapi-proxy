@@ -3,10 +3,13 @@ package io.confluent.pas.mcp.proxy.frameworks.java.spring.annotation;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.frameworks.java.SubscriptionHandler;
+import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.context.ApplicationContext;
@@ -30,6 +33,15 @@ public class AgentRegistrar implements InitializingBean, Closeable {
     private static final String SELF_BEAN_NAME = AgentRegistrar.class.getSimpleName();
 
     /**
+     * Supplier for creating SubscriptionHandlers
+     */
+    public interface SubscriptionHandlerSupplier {
+        SubscriptionHandler<? extends Key, ?, ?> get(Class<? extends Key> keyClass,
+                                                     Class<?> requestClass,
+                                                     Class<?> responseClass);
+    }
+
+    /**
      * A record representing an invocation handler for a subscription.
      * It contains a MethodHandle for the annotated method and a SubscriptionHandler for managing subscriptions.
      *
@@ -37,8 +49,8 @@ public class AgentRegistrar implements InitializingBean, Closeable {
      * @param subscriptionHandler The SubscriptionHandler responsible for subscribing to messages.
      */
     @Builder
-    private record InvocationHandler(MethodHandle method,
-                                     SubscriptionHandler<?, ?, ?> subscriptionHandler) implements Closeable {
+    record InvocationHandler(MethodHandle method,
+                             SubscriptionHandler<?, ?, ?> subscriptionHandler) implements Closeable {
 
         /**
          * Subscribes the handler to the specified registration.
@@ -75,14 +87,14 @@ public class AgentRegistrar implements InitializingBean, Closeable {
     private final ApplicationContext applicationContext;
 
     /**
-     * Kafka configuration for setting up message handlers
-     */
-    private final KafkaConfiguration kafkaConfiguration;
-
-    /**
      * List to keep track of all active subscription handlers
      */
     private final List<InvocationHandler> handlers = new ArrayList<>();
+
+    /**
+     * Supplier for creating SubscriptionHandlers
+     */
+    private final SubscriptionHandlerSupplier subscriptionHandlerSupplier;
 
     /**
      * Creates a new AgentRegistrar with the required dependencies.
@@ -90,11 +102,22 @@ public class AgentRegistrar implements InitializingBean, Closeable {
      * @param kafkaConfiguration Configuration for Kafka messaging
      * @param applicationContext Spring application context
      */
+    @Autowired
     public AgentRegistrar(KafkaConfiguration kafkaConfiguration,
                           ApplicationContext applicationContext) {
-        this.applicationContext = applicationContext;
-        this.kafkaConfiguration = kafkaConfiguration;
+        this(applicationContext,
+                (keyClass, requestClass, responseClass) ->
+                        new SubscriptionHandler<>(kafkaConfiguration, keyClass, requestClass, responseClass)
+        );
+
     }
+
+    public AgentRegistrar(ApplicationContext applicationContext,
+                          SubscriptionHandlerSupplier subscriptionHandlerSupplier) {
+        this.applicationContext = applicationContext;
+        this.subscriptionHandlerSupplier = subscriptionHandlerSupplier;
+    }
+
 
     /**
      * Initializes the registrar after all properties are set.
@@ -121,17 +144,26 @@ public class AgentRegistrar implements InitializingBean, Closeable {
                             final Agent agent = method.getAnnotation(Agent.class);
                             final InvocationHandler info = getSubscriptionHandler(method, agent, bean);
                             // Track the handler for cleanup
-                            handlers.add(info);
+                            addHandler(info);
                         }
                         // If the method is annotated with @Resource, handle it accordingly
                         else if (method.isAnnotationPresent(Resource.class)) {
                             final Resource resource = method.getAnnotation(Resource.class);
                             final InvocationHandler info = getSubscriptionHandler(method, resource, bean);
                             // Track the handler for cleanup
-                            handlers.add(info);
+                            addHandler(info);
                         }
                     });
         }
+    }
+
+    /**
+     * Adds a handler to the list of active handlers.
+     *
+     * @param handler The handler to add.
+     */
+    void addHandler(InvocationHandler handler) {
+        handlers.add(handler);
     }
 
     /**
@@ -156,8 +188,7 @@ public class AgentRegistrar implements InitializingBean, Closeable {
                 resource.path());
 
         // Create and start a subscription handler for the resource
-        final SubscriptionHandler<?, ?, ? extends Schemas.ResourceResponse> subscriptionHandler = new SubscriptionHandler<>(
-                kafkaConfiguration,
+        var subscriptionHandler = subscriptionHandlerSupplier.get(
                 resource.keyClass(),
                 Schemas.ResourceRequest.class,
                 resource.responseClass());
@@ -185,8 +216,7 @@ public class AgentRegistrar implements InitializingBean, Closeable {
                 agent.response_topic());
 
         // Create and start a subscription handler for the agent
-        final SubscriptionHandler<?, ?, ?> subscriptionHandler = new SubscriptionHandler<>(
-                kafkaConfiguration,
+        var subscriptionHandler = subscriptionHandlerSupplier.get(
                 agent.keyClass(),
                 agent.requestClass(),
                 agent.responseClass());
