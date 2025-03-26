@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.client;
+package io.confluent.pas.mcp.proxy.frameworks.client.internal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -8,8 +8,6 @@ import io.confluent.pas.mcp.proxy.frameworks.client.exceptions.AgentException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
 import org.everit.json.schema.*;
-
-import java.util.Map;
 
 /**
  * A class to deserialize JSON responses based on the provided schema.

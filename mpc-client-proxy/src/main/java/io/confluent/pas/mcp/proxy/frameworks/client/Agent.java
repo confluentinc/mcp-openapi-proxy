@@ -18,6 +18,7 @@ import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.common.utils.JsonUtils;
+import io.confluent.pas.mcp.proxy.frameworks.client.internal.*;
 import io.confluent.pas.mcp.proxy.frameworks.java.SubscriptionHandler;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import io.confluent.pas.mcp.proxy.frameworks.client.exceptions.AgentException;

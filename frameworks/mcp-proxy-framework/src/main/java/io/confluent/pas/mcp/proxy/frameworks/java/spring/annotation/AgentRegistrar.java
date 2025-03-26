@@ -5,7 +5,6 @@ import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.frameworks.java.SubscriptionHandler;
 import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import lombok.Builder;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.InitializingBean;

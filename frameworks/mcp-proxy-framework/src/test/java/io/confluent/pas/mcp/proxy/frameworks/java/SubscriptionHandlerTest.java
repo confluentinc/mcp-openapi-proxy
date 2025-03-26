@@ -113,8 +113,4 @@ public class SubscriptionHandlerTest {
         verify(registrationService, times(1)).isRegistered(any(Schemas.RegistrationKey.class));
         verify(registrationService, times(1)).register(any(Schemas.RegistrationKey.class), any(Schemas.Registration.class));
     }
-
-    @Test
-    public void testClose() {
-    }
 }

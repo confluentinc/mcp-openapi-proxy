@@ -18,7 +18,6 @@
         <jsonschema-generator.version>4.37.0</jsonschema-generator.version>
         <spring-ai.version>1.0.0-M6</spring-ai.version>
         <kstream.version>3.9.0</kstream.version>
-        <aspectj.version>3.27.3</aspectj.version>
     </properties>
 
     <dependencyManagement>
@@ -118,11 +117,15 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.assertj/assertj-core -->
+        <!-- https://mvnrepository.com/artifact/org.aspectj/aspectjweaver -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <scope>runtime</scope>
+        </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>${aspectj.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
