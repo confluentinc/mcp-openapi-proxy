@@ -7,6 +7,7 @@ import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.RegistrationService;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.modelcontextprotocol.server.McpAsyncServer;
+import io.modelcontextprotocol.server.McpServerFeatures;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,7 +64,7 @@ class RegistrationCoordinatorTest {
                 "{\"type\":\"record\",\"name\":\"test\",\"fields\":[{\"name\":\"field\",\"type\":\"string\"}]}"
         ));
 
-        when(mcpServer.addTool(any())).thenReturn(Mono.empty());
+        when(mcpServer.addTool(any(McpServerFeatures.AsyncToolSpecification.class))).thenReturn(Mono.empty());
 
         doNothing().when(registrationService).register(any(), any());
 

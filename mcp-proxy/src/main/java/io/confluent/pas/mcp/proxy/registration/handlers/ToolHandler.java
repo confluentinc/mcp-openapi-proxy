@@ -57,8 +57,8 @@ public class ToolHandler implements RegistrationHandler<Map<String, Object>, Jso
                 schemas.getRequestSchema().getSchema());
 
         log.info("Registering tool {}", registration.getName());
-        final McpServerFeatures.AsyncToolRegistration toolRegistration = new McpServerFeatures.AsyncToolRegistration(tool,
-                (toolArguments) -> Mono.create(sink -> sendToolRequest(toolArguments, sink)));
+        final McpServerFeatures.AsyncToolSpecification toolRegistration = new McpServerFeatures.AsyncToolSpecification(tool,
+                (exchange, toolArguments) -> Mono.create(sink -> sendToolRequest(toolArguments, sink)));
 
         return mcpServer.addTool(toolRegistration);
     }

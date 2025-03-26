@@ -72,7 +72,7 @@ class McpToolFilters<T extends McpToolFilters<T>> {
      * @return The current McpToolFilters instance.
      */
     @SuppressWarnings("unchecked")
-    public T denis(List<String> deniedTools) {
+    public T denies(List<String> deniedTools) {
         if (deniedTools == null || deniedTools.isEmpty()) {
             log.warn("Attempted to deny an empty list of tools.");
             return (T) this;

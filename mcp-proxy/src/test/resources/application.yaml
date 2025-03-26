@@ -10,19 +10,14 @@ mcp:
   server:
     name: "Confluent MCP Proxy"
     version: 1.0.0
-kafka:
-  broker:
-    url: ${BROKER_URL}
-    security_protocol: SASL_SSL
-    sasl_mechanism: PLAIN
-    jaas_config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
-  schema-registry:
-    url: ${SR_URL}
-    auth_info: ${SR_API_KEY}:${SR_API_SECRET}
-registration:
-  topic: "_agent_registry"
-transport:
-  mode: "sse"
+    mode: "sse"
 authentication:
   cache-size: 100
   cache-expiry-in-second: 300
+  enabled: false
+kafka:
+  application-id: "mcp.proxy"
+  broker-servers: "localhost:9092"
+  jaas-config: ""
+  sr-url: "mock://localhost"
+  sr-basic-auth: ""

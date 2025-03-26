@@ -9,6 +9,7 @@ import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializerConfig;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializerConfig;
 import io.kcache.KafkaCacheConfig;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -82,6 +83,10 @@ public class KafkaPropertiesFactory {
     public static Map<String, Object> getSchemaRegistryConfig(KafkaConfiguration kafkaConfiguration) {
         Map<String, Object> config = new HashMap<>();
         config.put("schema.registry.url", kafkaConfiguration.schemaRegistryUrl());
+        if (StringUtils.isEmpty(kafkaConfiguration.schemaRegistryBasicAuthUserInfo())) {
+            return config;
+        }
+
         config.put("basic.auth.credentials.source", "USER_INFO");
         config.put("schema.registry.basic.auth.user.info", kafkaConfiguration.schemaRegistryBasicAuthUserInfo());
         return config;
@@ -174,12 +179,19 @@ public class KafkaPropertiesFactory {
     private static Properties getDefaultProperties(KafkaConfiguration configration, String configurationSuffix) {
         Properties properties = new Properties();
         properties.put(configurationSuffix + "bootstrap.servers", configration.brokerServers());
-        properties.put(configurationSuffix + "security.protocol", configration.securityProtocol());
-        properties.put(configurationSuffix + "sasl.mechanism", configration.saslMechanism());
-        properties.put(configurationSuffix + "sasl.jaas.config", configration.saslJaasConfig());
+
+        if (StringUtils.isNotEmpty(configration.saslJaasConfig())) {
+            properties.put(configurationSuffix + "security.protocol", configration.securityProtocol());
+            properties.put(configurationSuffix + "sasl.mechanism", configration.saslMechanism());
+            properties.put(configurationSuffix + "sasl.jaas.config", configration.saslJaasConfig());
+        }
+
         properties.put(configurationSuffix + "schema.registry.url", configration.schemaRegistryUrl());
-        properties.put(configurationSuffix + "schema.registry.basic.auth.user.info", configration.schemaRegistryBasicAuthUserInfo());
-        properties.put(configurationSuffix + "basic.auth.credentials.source", "USER_INFO");
+        if (!StringUtils.isEmpty(configration.schemaRegistryBasicAuthUserInfo())) {
+            properties.put(configurationSuffix + "schema.registry.basic.auth.user.info", configration.schemaRegistryBasicAuthUserInfo());
+            properties.put(configurationSuffix + "basic.auth.credentials.source", "USER_INFO");
+        }
+
         return properties;
     }
 }
