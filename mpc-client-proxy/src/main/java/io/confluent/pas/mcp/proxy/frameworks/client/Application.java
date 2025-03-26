@@ -1,5 +1,6 @@
 package io.confluent.pas.mcp.proxy.frameworks.client;
 
+import io.confluent.pas.mcp.proxy.frameworks.client.internal.AgentConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.cli.*;
 import org.springframework.boot.SpringApplication;

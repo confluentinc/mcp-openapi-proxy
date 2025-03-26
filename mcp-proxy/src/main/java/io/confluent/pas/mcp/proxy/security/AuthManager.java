@@ -41,11 +41,21 @@ public class AuthManager implements ReactiveAuthenticationManager {
      * @param cacheExpiry        the expiry time for cache entries in seconds
      */
     public AuthManager(KafkaConfiguration kafkaConfiguration, int cacheSize, int cacheExpiry) {
-        this.kafkaConfiguration = kafkaConfiguration;
-        this.usersAuthenticated = Caffeine.newBuilder()
+        this(kafkaConfiguration, Caffeine.newBuilder()
                 .maximumSize(cacheSize)
                 .expireAfterWrite(Duration.ofSeconds(cacheExpiry))
-                .build();
+                .build());
+    }
+
+    /**
+     * Constructs a new AuthManager instance with the provided configuration and cache.
+     *
+     * @param kafkaConfiguration the schema registry configuration
+     * @param usersAuthenticated the cache for storing authenticated users
+     */
+    public AuthManager(KafkaConfiguration kafkaConfiguration, Cache<String, UserAuthenticated> usersAuthenticated) {
+        this.kafkaConfiguration = kafkaConfiguration;
+        this.usersAuthenticated = usersAuthenticated;
     }
 
     /**
@@ -87,7 +97,7 @@ public class AuthManager implements ReactiveAuthenticationManager {
      * @param config the schema registry configuration map
      * @return the SchemaRegistryClient instance
      */
-    private SchemaRegistryClient createSchemaRegistryClient(Map<String, Object> config) {
+    SchemaRegistryClient createSchemaRegistryClient(Map<String, Object> config) {
         return SchemaRegistryClientFactory.newClient(
                 List.of(kafkaConfiguration.schemaRegistryUrl()),
                 1,

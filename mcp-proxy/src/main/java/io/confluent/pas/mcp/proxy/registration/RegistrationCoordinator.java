@@ -35,14 +35,34 @@ public class RegistrationCoordinator implements DisposableBean {
     public RegistrationCoordinator(KafkaConfiguration kafkaConfiguration,
                                    RequestResponseHandler requestResponseHandler,
                                    McpAsyncServer mcpServer) {
+        this(kafkaConfiguration,
+                requestResponseHandler,
+                mcpServer,
+                KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfiguration));
+    }
+
+    public RegistrationCoordinator(KafkaConfiguration kafkaConfiguration,
+                                   RequestResponseHandler requestResponseHandler,
+                                   McpAsyncServer mcpServer,
+                                   SchemaRegistryClient schemaRegistryClient) {
         this.requestResponseHandler = requestResponseHandler;
         this.mcpServer = mcpServer;
-        this.schemaRegistryClient = KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfiguration);
+        this.schemaRegistryClient = schemaRegistryClient;
         this.registrationService = new RegistrationService<>(
                 kafkaConfiguration,
                 Schemas.RegistrationKey.class,
                 Schemas.Registration.class,
                 this::onRegistration);
+    }
+
+    public RegistrationCoordinator(RequestResponseHandler requestResponseHandler,
+                                   McpAsyncServer mcpServer,
+                                   SchemaRegistryClient schemaRegistryClient,
+                                   RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService) {
+        this.requestResponseHandler = requestResponseHandler;
+        this.mcpServer = mcpServer;
+        this.schemaRegistryClient = schemaRegistryClient;
+        this.registrationService = registrationService;
     }
 
     /**
@@ -66,14 +86,22 @@ public class RegistrationCoordinator implements DisposableBean {
     }
 
     /**
-     * Get all registrations
+     * Get all registrations handlers
      *
-     * @return The registrations
+     * @return The registrations handlers
      */
     public List<RegistrationHandler<?, ?>> getAllRegistrationHandlers() {
         return handlers.values().stream().toList();
     }
 
+    /**
+     * Get all registrations
+     *
+     * @return The registrations
+     */
+    public List<Schemas.Registration> getAllRegistrations() {
+        return registrationService.getAllRegistrations();
+    }
 
     /**
      * Register a new tool
@@ -98,7 +126,7 @@ public class RegistrationCoordinator implements DisposableBean {
      *
      * @param registrations The registrations
      */
-    private void onRegistration(Map<Schemas.RegistrationKey, Schemas.Registration> registrations) {
+    void onRegistration(Map<Schemas.RegistrationKey, Schemas.Registration> registrations) {
         requestResponseHandler.addRegistrations(registrations.values());
 
         registrations.forEach(this::onRegistration);
@@ -119,7 +147,7 @@ public class RegistrationCoordinator implements DisposableBean {
         }
 
         if (handlers.containsKey(registrationName)) {
-            log.info("Registration already exists, updating tool: {}", registrationName);
+            log.info("Registration already exists, updating: {}", registrationName);
             unregisterHandler(registrationName);
         } else {
             log.info("Received new registration: {}", registrationName);
@@ -169,7 +197,7 @@ public class RegistrationCoordinator implements DisposableBean {
     }
 
     @Override
-    public void destroy() throws Exception {
+    public void destroy() {
         registrationService.close();
     }
 }

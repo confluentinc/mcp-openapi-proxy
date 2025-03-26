@@ -1,8 +1,6 @@
-package io.confluent.pas.mcp.proxy.frameworks.client;
+package io.confluent.pas.mcp.proxy.frameworks.client.internal;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.confluent.kafka.schemaregistry.json.JsonSchemaUtils;
 import io.confluent.pas.mcp.common.utils.JsonUtils;
@@ -10,8 +8,6 @@ import io.confluent.pas.mcp.proxy.frameworks.client.exceptions.AgentException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
 import org.everit.json.schema.*;
-
-import java.util.Map;
 
 /**
  * A class to deserialize JSON responses based on the provided schema.
@@ -60,9 +56,8 @@ public class JsonResponseDeserializer {
                         content = "{\"response\": \"" + StringEscapeUtils.escapeJson(content) + "\"}";
                     }
 
-                    // Deserialize the content into a Map<String, Object> and convert to JsonNode
-                    final Map<String, Object> response = JsonUtils.toMap(content);
-                    jsonNode = JsonUtils.toJsonNode(response);
+                    // Deserialize the content into a JsonNode
+                    jsonNode = JsonUtils.toJsonNode(content);
                 }
                 case STRING -> jsonNode = JsonUtils.toJsonNode(content);
                 case INTEGER -> {
@@ -98,17 +93,13 @@ public class JsonResponseDeserializer {
         if (schema instanceof ObjectSchema) {
             return JsonType.OBJECT;
         } else if (!(schema instanceof ConstSchema) && !(schema instanceof EnumSchema)) {
-            if (schema instanceof ArraySchema) {
-                return JsonType.OBJECT;
-            } else if (schema instanceof CombinedSchema) {
-                return JsonType.OBJECT;
-            } else if (schema instanceof StringSchema) {
-                return JsonType.STRING;
-            } else if (schema instanceof NumberSchema numberSchema) {
-                return numberSchema.requiresInteger() ? JsonType.INTEGER : JsonType.DOUBLE;
-            } else {
-                return schema instanceof BooleanSchema ? JsonType.BOOLEAN : JsonType.OBJECT;
-            }
+            return switch (schema) {
+                case ArraySchema ignored -> JsonType.OBJECT;
+                case CombinedSchema ignored -> JsonType.OBJECT;
+                case StringSchema ignored -> JsonType.STRING;
+                case NumberSchema numberSchema -> numberSchema.requiresInteger() ? JsonType.INTEGER : JsonType.DOUBLE;
+                case null, default -> schema instanceof BooleanSchema ? JsonType.BOOLEAN : JsonType.OBJECT;
+            };
         } else {
             return JsonType.OBJECT;
         }

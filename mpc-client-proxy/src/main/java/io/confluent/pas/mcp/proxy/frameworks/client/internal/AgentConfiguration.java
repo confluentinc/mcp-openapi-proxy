@@ -1,10 +1,12 @@
-package io.confluent.pas.mcp.proxy.frameworks.client;
+package io.confluent.pas.mcp.proxy.frameworks.client.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.confluent.kafka.schemaregistry.json.JsonSchema;
 import io.confluent.pas.mcp.common.utils.JsonUtils;
 import io.confluent.pas.mcp.proxy.frameworks.client.exceptions.ConfigurationException;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
@@ -22,6 +24,8 @@ public class AgentConfiguration {
 
     @Getter
     @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class ToolConfiguration {
         @JsonProperty("name")
         private String name;
@@ -64,6 +68,7 @@ public class AgentConfiguration {
     private List<String> arguments;
 
     @JsonProperty("mcpTool")
+    @Getter
     private List<ToolConfiguration> tools;
 
     /**

@@ -105,7 +105,7 @@ public class JsonUtils {
     public static JsonNode toJsonNode(Map<String, Object> map) {
         return MAPPER.valueToTree(map);
     }
-
+    
     /**
      * Converts a JSON string to a JsonNode.
      *

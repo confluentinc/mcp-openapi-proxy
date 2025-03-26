@@ -6,7 +6,7 @@ package io.confluent.pas.mcp.proxy.registration.kafka;
  * @param <K> Key type
  * @param <V> Value type
  */
-public interface ConsumerServiceHandler<K, V> {
+public interface ConsumerHandler<K, V> {
 
     /**
      * Handles the received message.

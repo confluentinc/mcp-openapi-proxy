@@ -1,8 +1,8 @@
-package io.confluent.pas.mcp.proxy.registration.kafka;
+package io.confluent.pas.mcp.proxy.frameworks.client.internal;
 
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 
-public class KafkaConsumerConfiguration implements KafkaConfiguration {
+public class KafkaToolConfiguration implements KafkaConfiguration {
 
     private final String brokerServers;
     private final String schemaRegistryUrl;
@@ -10,10 +10,10 @@ public class KafkaConsumerConfiguration implements KafkaConfiguration {
     private final String saslJaasConfig;
     private final String schemaRegistryBasicAuthUserInfo;
 
-    public KafkaConsumerConfiguration(KafkaConfiguration other, String consumerGroup) {
+    public KafkaToolConfiguration(KafkaConfiguration other, AgentConfiguration.ToolConfiguration tool) {
         this.brokerServers = other.brokerServers();
         this.schemaRegistryUrl = other.schemaRegistryUrl();
-        this.applicationId = consumerGroup + "_" + other.applicationId();
+        this.applicationId = tool.getName() + "_" + other.applicationId();
         this.saslJaasConfig = other.saslJaasConfig();
         this.schemaRegistryBasicAuthUserInfo = other.schemaRegistryBasicAuthUserInfo();
     }

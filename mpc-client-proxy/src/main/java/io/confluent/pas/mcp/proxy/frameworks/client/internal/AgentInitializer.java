@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.frameworks.client;
+package io.confluent.pas.mcp.proxy.frameworks.client.internal;
 
 import io.confluent.pas.mcp.proxy.frameworks.client.exceptions.AgentException;
 import io.modelcontextprotocol.client.McpAsyncClient;
@@ -51,9 +51,24 @@ public class AgentInitializer {
      * @throws AgentException if tool validation fails after retries.
      */
     public Mono<List<AgentToolHandler>> initialize() {
+        return initialize(60, 1);
+    }
+
+    /**
+     * Initializes the MCP tool handling system.
+     * This method retrieves a list of available tools from the MCP client,
+     * validates them against the configuration, and applies a retry strategy
+     * for resilience.
+     *
+     * @param retryAttempts The number of retry attempts.
+     * @param retryDelay    The delay between retry attempts.
+     * @return A Mono containing the validated list of MCP tool handlers.
+     * @throws AgentException if tool validation fails after retries.
+     */
+    public Mono<List<AgentToolHandler>> initialize(int retryAttempts, int retryDelay) {
         return mcpAsyncClient.listTools()
                 .flatMap(tools -> findAndValidateTool(tools.tools()))
-                .retryWhen(Retry.fixedDelay(60, Duration.ofSeconds(1))
+                .retryWhen(Retry.fixedDelay(retryAttempts, Duration.ofSeconds(retryDelay))
                         .filter(error -> error instanceof AgentException)
                         .doBeforeRetry(retrySignal ->
                                 log.warn("Retrying initialization attempt {}", retrySignal.totalRetries()))
@@ -70,7 +85,7 @@ public class AgentInitializer {
      * @return A Mono containing the validated list of MCP tool handlers.
      * @throws AgentException if no matching tools are found.
      */
-    private Mono<List<AgentToolHandler>> findAndValidateTool(List<McpSchema.Tool> tools) {
+    Mono<List<AgentToolHandler>> findAndValidateTool(List<McpSchema.Tool> tools) {
         if (tools.isEmpty()) {
             return Mono.error(new AgentException("No tools found"));
         }

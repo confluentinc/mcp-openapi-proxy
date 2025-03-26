@@ -17,7 +17,7 @@ import java.util.Map;
  * @param <R> the type of registration
  */
 @Slf4j
-public class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R extends Schemas.Registration> implements CacheUpdateHandler<K, R> {
+class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R extends Schemas.Registration> implements CacheUpdateHandler<K, R> {
 
     /**
      * Interface for handling registration updates.
@@ -34,7 +34,7 @@ public class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R ext
     private boolean initialized = false;
 
     @Getter
-    private boolean shouldCreateSchemas;
+    private boolean empty;
 
     /**
      * Constructor for RegistrationServiceHandler.
@@ -59,7 +59,7 @@ public class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R ext
         if (count == 0) {
             // No event, we might need to register the schemas
             log.info("No registration found in the cache, registering schemas.");
-            shouldCreateSchemas = true;
+            empty = true;
         } else if (!accumulator.isEmpty()) {
             handler.handleRegistrations(accumulator);
             accumulator.clear();
@@ -90,9 +90,15 @@ public class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R ext
         // If the cache is not initialized, store the registration in the accumulator
         // This will help to keep the last event for each key
         if (initialized) {
-            handler.handleRegistrations(Map.of(key, value));
+            handler.handleRegistrations(new HashMap<>() {{
+                put(key, value);
+            }});
         } else {
-            accumulator.put(key, value);
+            if (value == null) {
+                accumulator.remove(key);
+            } else {
+                accumulator.put(key, value);
+            }
         }
     }
 }
