@@ -3,10 +3,10 @@ package io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import io.modelcontextprotocol.server.McpServer;
-import io.modelcontextprotocol.server.transport.StdioServerTransport;
-import io.modelcontextprotocol.server.transport.WebFluxSseServerTransport;
+import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
+import io.modelcontextprotocol.server.transport.WebFluxSseServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
-import io.modelcontextprotocol.spec.ServerMcpTransport;
+import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -51,8 +51,8 @@ public class McpServerAutoConfiguration {
      */
     @Bean
     @ConditionalOnProperty(prefix = "mcp.server", name = "mode", havingValue = "sse")
-    public WebFluxSseServerTransport sseServerTransport() {
-        return new WebFluxSseServerTransport(new ObjectMapper(), MESSAGE_ENDPOINT);
+    public WebFluxSseServerTransportProvider sseServerTransport() {
+        return new WebFluxSseServerTransportProvider(new ObjectMapper(), MESSAGE_ENDPOINT);
     }
 
     /**
@@ -64,7 +64,7 @@ public class McpServerAutoConfiguration {
      */
     @Bean
     @ConditionalOnProperty(prefix = "mcp.server", name = "mode", havingValue = "sse")
-    public RouterFunction<?> mcpRouterFunction(WebFluxSseServerTransport transport) {
+    public RouterFunction<?> mcpRouterFunction(WebFluxSseServerTransportProvider transport) {
         return transport.getRouterFunction();
     }
 
@@ -76,8 +76,8 @@ public class McpServerAutoConfiguration {
      */
     @Bean
     @ConditionalOnProperty(prefix = "mcp.server", name = "mode", havingValue = "stdio")
-    public StdioServerTransport stdioServerTransport() {
-        return new StdioServerTransport();
+    public StdioServerTransportProvider stdioServerTransport() {
+        return new StdioServerTransportProvider();
     }
 
     /**
@@ -90,7 +90,7 @@ public class McpServerAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public McpAsyncServer mcpAsyncServer(ServerMcpTransport transport) {
+    public McpAsyncServer mcpAsyncServer(McpServerTransportProvider transport) {
         log.info("Starting MCP server {} version {} with transport: {} ",
                 name,
                 version,

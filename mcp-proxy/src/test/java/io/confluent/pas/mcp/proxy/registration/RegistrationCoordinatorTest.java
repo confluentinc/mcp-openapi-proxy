@@ -12,6 +12,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.context.ApplicationEventPublisher;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
@@ -72,7 +73,8 @@ class RegistrationCoordinatorTest {
                 requestResponseHandler,
                 mcpServer,
                 schemaRegistryClient,
-                registrationService);
+                registrationService,
+                mock(ApplicationEventPublisher.class));
     }
 
     @Test

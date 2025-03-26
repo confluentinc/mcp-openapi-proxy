@@ -5,12 +5,15 @@ import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.KafkaPropertiesFactory;
 import io.confluent.pas.mcp.common.services.RegistrationService;
 import io.confluent.pas.mcp.common.services.Schemas;
+import io.confluent.pas.mcp.proxy.registration.events.DeletedRegistrationEvent;
+import io.confluent.pas.mcp.proxy.registration.events.NewRegistrationEvent;
 import io.confluent.pas.mcp.proxy.registration.handlers.ResourceHandler;
 import io.confluent.pas.mcp.proxy.registration.handlers.ToolHandler;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -30,24 +33,29 @@ public class RegistrationCoordinator implements DisposableBean {
     private final Map<String, RegistrationHandler<?, ?>> handlers = new ConcurrentHashMap<>();
     private final SchemaRegistryClient schemaRegistryClient;
     private final RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Autowired
     public RegistrationCoordinator(KafkaConfiguration kafkaConfiguration,
                                    RequestResponseHandler requestResponseHandler,
-                                   McpAsyncServer mcpServer) {
+                                   McpAsyncServer mcpServer,
+                                   ApplicationEventPublisher applicationEventPublisher) {
         this(kafkaConfiguration,
                 requestResponseHandler,
                 mcpServer,
-                KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfiguration));
+                KafkaPropertiesFactory.getSchemRegistryClient(kafkaConfiguration),
+                applicationEventPublisher);
     }
 
     public RegistrationCoordinator(KafkaConfiguration kafkaConfiguration,
                                    RequestResponseHandler requestResponseHandler,
                                    McpAsyncServer mcpServer,
-                                   SchemaRegistryClient schemaRegistryClient) {
+                                   SchemaRegistryClient schemaRegistryClient,
+                                   ApplicationEventPublisher applicationEventPublisher) {
         this.requestResponseHandler = requestResponseHandler;
         this.mcpServer = mcpServer;
         this.schemaRegistryClient = schemaRegistryClient;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.registrationService = new RegistrationService<>(
                 kafkaConfiguration,
                 Schemas.RegistrationKey.class,
@@ -58,11 +66,13 @@ public class RegistrationCoordinator implements DisposableBean {
     public RegistrationCoordinator(RequestResponseHandler requestResponseHandler,
                                    McpAsyncServer mcpServer,
                                    SchemaRegistryClient schemaRegistryClient,
-                                   RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService) {
+                                   RegistrationService<Schemas.RegistrationKey, Schemas.Registration> registrationService,
+                                   ApplicationEventPublisher applicationEventPublisher) {
         this.requestResponseHandler = requestResponseHandler;
         this.mcpServer = mcpServer;
         this.schemaRegistryClient = schemaRegistryClient;
         this.registrationService = registrationService;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     /**
@@ -162,6 +172,9 @@ public class RegistrationCoordinator implements DisposableBean {
                     .doOnSuccess(v -> {
                         log.info("Added registration: {}", registrationName);
                         handlers.put(registrationName, handler);
+
+                        // Emit the registration event
+                        applicationEventPublisher.publishEvent(new NewRegistrationEvent(this, registration));
                     })
                     .doOnError(e -> {
                         log.error("Error adding registration: {}", registrationName, e);
@@ -191,6 +204,8 @@ public class RegistrationCoordinator implements DisposableBean {
                 .doOnSuccess(v -> {
                     log.info("Unregistered {}", registrationName);
                     handlers.remove(registrationName);
+
+                    applicationEventPublisher.publishEvent(new DeletedRegistrationEvent(this, handler.getRegistration()));
                 })
                 .doOnError(e -> log.error("Error unregistering {}", registrationName, e))
                 .block();

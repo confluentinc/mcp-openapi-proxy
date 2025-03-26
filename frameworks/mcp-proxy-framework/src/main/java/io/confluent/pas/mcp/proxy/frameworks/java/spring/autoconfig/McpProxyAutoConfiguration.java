@@ -8,6 +8,9 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.event.ApplicationEventMulticaster;
+import org.springframework.context.event.SimpleApplicationEventMulticaster;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
 /**
  * Auto-configuration class for MCP Proxy Kafka settings.
@@ -138,5 +141,14 @@ public class McpProxyAutoConfiguration {
                 registrationTopicName,
                 topicConfiguration
         );
+    }
+
+    @ConditionalOnMissingBean
+    @Bean(name = "applicationEventMulticaster")
+    public ApplicationEventMulticaster simpleApplicationEventMulticaster() {
+        SimpleApplicationEventMulticaster eventMulticaster = new SimpleApplicationEventMulticaster();
+
+        eventMulticaster.setTaskExecutor(new SimpleAsyncTaskExecutor());
+        return eventMulticaster;
     }
 }

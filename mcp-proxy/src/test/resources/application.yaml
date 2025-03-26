@@ -17,7 +17,7 @@ authentication:
   enabled: false
 kafka:
   application-id: "mcp.proxy"
-  broker-servers: "localhost:9092"
+  broker-servers: ${BROKER_URL}
   jaas-config: ""
   sr-url: "mock://localhost"
   sr-basic-auth: ""
