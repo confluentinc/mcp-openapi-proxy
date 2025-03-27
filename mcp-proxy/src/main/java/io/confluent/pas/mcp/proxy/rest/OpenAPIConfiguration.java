@@ -236,6 +236,8 @@ public class OpenAPIConfiguration {
             schema.setRequired(schemaProperties.required);
         }
 
+        //Adding support for primitive types
+
         schema.setProperties(schemaProperties.properties
                 .entrySet()
                 .stream()

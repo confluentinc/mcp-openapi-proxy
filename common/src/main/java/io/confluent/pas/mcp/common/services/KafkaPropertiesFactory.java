@@ -15,10 +15,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.Serdes;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * Factory class for creating Kafka and Schema Registry configuration properties.
@@ -122,7 +119,7 @@ public class KafkaPropertiesFactory {
                                                    Class<?> keyType,
                                                    Class<?> valueType) {
         final Properties properties = getDefaultProperties(configration, "");
-        properties.put(ConsumerConfig.CLIENT_ID_CONFIG, configration.applicationId());
+        properties.put(ConsumerConfig.CLIENT_ID_CONFIG, configration.applicationId() + UUID.randomUUID());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, configration.applicationId() + "-group");
 
         if (requireEarliest) {
