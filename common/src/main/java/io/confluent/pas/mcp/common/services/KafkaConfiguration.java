@@ -29,6 +29,13 @@ public interface KafkaConfiguration {
     }
 
     /**
+     * Gets the client ID for Kafka connections.
+     *
+     * @return A unique identifier for this client instance
+     */
+    String clientId();
+
+    /**
      * Gets the Kafka broker connection string.
      *
      * @return A comma-separated list of host:port pairs for Kafka brokers

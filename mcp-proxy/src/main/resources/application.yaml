@@ -15,6 +15,7 @@ mcp:
     version: 1.0.0
     mode: "sse"
 kafka:
+  client-id: ${CLIENT_ID:#{null}}
   application-id: "mcp.proxy"
   broker-servers: ${BROKER_URL}
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
@@ -42,6 +43,7 @@ mcp:
     version: 1.0.0
     mode: "sse"
 kafka:
+  client-id: ${CLIENT_ID:#{null}}
   application-id: "mcp.proxy"
   broker-servers: ${BROKER_URL}
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
@@ -67,6 +69,7 @@ mcp:
     version: 1.0.0
     mode: "stdio"
 kafka:
+  client-id: ${CLIENT_ID:#{null}}
   application-id: "mcp.proxy"
   broker-servers: ${BROKER_URL}
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
