@@ -237,28 +237,37 @@ public class OpenAPIConfiguration {
         }
 
         //Adding support for primitive types
+        switch (schemaProperties.type) {
+            case "string" -> schema.setType("string");
+            case "integer" -> schema.setType("integer");
+            case "boolean" -> schema.setType("boolean");
+            case "array" -> schema.setType("array");
+            default -> schema.setProperties(schemaProperties.properties
+                    .entrySet()
+                    .stream()
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> {
+                                final Map<String, Object> property = (Map<String, Object>) entry.getValue();
+                                final Schema<?> propertySchema = new Schema<>();
+                                final Set<String> types = getPropertyType(property);
+                                if (types == null || types.isEmpty()) {
+                                    log.warn("Type is empty for property {}", entry.getKey());
+                                }
 
-        schema.setProperties(schemaProperties.properties
-                .entrySet()
-                .stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> {
-                            final Map<String, Object> property = (Map<String, Object>) entry.getValue();
-                            final Schema<?> propertySchema = new Schema<>();
-                            final Set<String> types = getPropertyType(property);
-                            if (types == null || types.isEmpty()) {
-                                log.warn("Type is empty for property {}", entry.getKey());
-                            }
+                                propertySchema.types(types);
+                                propertySchema.name(entry.getKey());
+                                if (property.containsKey("description")) {
+                                    propertySchema.description((String) property.get("description"));
+                                }
 
-                            propertySchema.types(types);
-                            propertySchema.name(entry.getKey());
-                            if (property.containsKey("description")) {
-                                propertySchema.description((String) property.get("description"));
-                            }
-
-                            return propertySchema;
-                        })));
+                                return propertySchema;
+                            })));
+        }
+        
+        if (schemaProperties.additionalProperties != null) {
+            schema.setAdditionalProperties(schemaProperties.additionalProperties);
+        }
 
         return schema;
     }
