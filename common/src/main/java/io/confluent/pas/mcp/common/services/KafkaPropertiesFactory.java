@@ -9,15 +9,13 @@ import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializerConfig;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializerConfig;
 import io.kcache.KafkaCacheConfig;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.Serdes;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * Factory class for creating Kafka and Schema Registry configuration properties.
@@ -82,6 +80,10 @@ public class KafkaPropertiesFactory {
     public static Map<String, Object> getSchemaRegistryConfig(KafkaConfiguration kafkaConfiguration) {
         Map<String, Object> config = new HashMap<>();
         config.put("schema.registry.url", kafkaConfiguration.schemaRegistryUrl());
+        if (StringUtils.isEmpty(kafkaConfiguration.schemaRegistryBasicAuthUserInfo())) {
+            return config;
+        }
+
         config.put("basic.auth.credentials.source", "USER_INFO");
         config.put("schema.registry.basic.auth.user.info", kafkaConfiguration.schemaRegistryBasicAuthUserInfo());
         return config;
@@ -95,7 +97,7 @@ public class KafkaPropertiesFactory {
      */
     public static Properties getProducerProperties(KafkaConfiguration configration) {
         Properties properties = getDefaultProperties(configration, "");
-        properties.put(ProducerConfig.CLIENT_ID_CONFIG, configration.applicationId());
+        properties.put(ProducerConfig.CLIENT_ID_CONFIG, configration.applicationId() + "-" + configration.clientId());
         properties.put("key.serializer", KafkaJsonSchemaSerializer.class.getName());
         properties.put("value.serializer", KafkaJsonSchemaSerializer.class.getName());
         properties.put(KafkaJsonSchemaSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
@@ -117,7 +119,7 @@ public class KafkaPropertiesFactory {
                                                    Class<?> keyType,
                                                    Class<?> valueType) {
         final Properties properties = getDefaultProperties(configration, "");
-        properties.put(ConsumerConfig.CLIENT_ID_CONFIG, configration.applicationId());
+        properties.put(ConsumerConfig.CLIENT_ID_CONFIG, configration.applicationId() + "-" + configration.clientId());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, configration.applicationId() + "-group");
 
         if (requireEarliest) {
@@ -147,7 +149,7 @@ public class KafkaPropertiesFactory {
     public static KafkaCacheConfig getCacheConfig(KafkaConfiguration configration, boolean readOnly) {
         Properties properties = getDefaultProperties(configration, "kafkacache.");
         properties.put(KafkaCacheConfig.KAFKACACHE_TOPIC_CONFIG, configration.registrationTopicName());
-        properties.put(KafkaCacheConfig.KAFKACACHE_CLIENT_ID_CONFIG, configration.applicationId() + "-registration");
+        properties.put(KafkaCacheConfig.KAFKACACHE_CLIENT_ID_CONFIG, configration.applicationId() + "-registration" + "-" + configration.clientId());
         properties.put(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, configration.applicationId() + "-registration" + "-group");
         properties.put(KafkaCacheConfig.KAFKACACHE_TOPIC_READ_ONLY_CONFIG, readOnly);
         return new KafkaCacheConfig(properties);
@@ -174,12 +176,19 @@ public class KafkaPropertiesFactory {
     private static Properties getDefaultProperties(KafkaConfiguration configration, String configurationSuffix) {
         Properties properties = new Properties();
         properties.put(configurationSuffix + "bootstrap.servers", configration.brokerServers());
-        properties.put(configurationSuffix + "security.protocol", configration.securityProtocol());
-        properties.put(configurationSuffix + "sasl.mechanism", configration.saslMechanism());
-        properties.put(configurationSuffix + "sasl.jaas.config", configration.saslJaasConfig());
+
+        if (StringUtils.isNotEmpty(configration.saslJaasConfig())) {
+            properties.put(configurationSuffix + "security.protocol", configration.securityProtocol());
+            properties.put(configurationSuffix + "sasl.mechanism", configration.saslMechanism());
+            properties.put(configurationSuffix + "sasl.jaas.config", configration.saslJaasConfig());
+        }
+
         properties.put(configurationSuffix + "schema.registry.url", configration.schemaRegistryUrl());
-        properties.put(configurationSuffix + "schema.registry.basic.auth.user.info", configration.schemaRegistryBasicAuthUserInfo());
-        properties.put(configurationSuffix + "basic.auth.credentials.source", "USER_INFO");
+        if (!StringUtils.isEmpty(configration.schemaRegistryBasicAuthUserInfo())) {
+            properties.put(configurationSuffix + "schema.registry.basic.auth.user.info", configration.schemaRegistryBasicAuthUserInfo());
+            properties.put(configurationSuffix + "basic.auth.credentials.source", "USER_INFO");
+        }
+
         return properties;
     }
 }

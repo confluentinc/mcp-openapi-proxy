@@ -35,8 +35,8 @@ public class McpToolFiltersTest {
     }
 
     @Test
-    public void testDenis() {
-        mcpToolFilters.denis(List.of("deniedTool1", "deniedTool2"));
+    public void testDenies() {
+        mcpToolFilters.denies(List.of("deniedTool1", "deniedTool2"));
         assertTrue(mcpToolFilters.getDeniedTools().containsAll(List.of("deniedTool1", "deniedTool2")));
     }
 

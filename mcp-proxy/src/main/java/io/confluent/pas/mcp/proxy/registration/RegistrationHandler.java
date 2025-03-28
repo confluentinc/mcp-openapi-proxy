@@ -5,6 +5,8 @@ import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import reactor.core.publisher.Mono;
 
+import javax.naming.OperationNotSupportedException;
+
 /**
  * Interface for handling registration of tools and resources.
  */
@@ -29,8 +31,9 @@ public interface RegistrationHandler<REQ, RES> {
      *
      * @param mcpServer the server to register with
      * @return a Mono that completes when the registration is complete
+     * @throws OperationNotSupportedException if the registration operation is not supported
      */
-    Mono<Void> register(McpAsyncServer mcpServer);
+    Mono<Void> register(McpAsyncServer mcpServer) throws OperationNotSupportedException;
 
     /**
      * Unregisters the tool or resource from the specified server.

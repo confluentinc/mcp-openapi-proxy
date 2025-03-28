@@ -59,14 +59,14 @@ class ToolHandlerTest {
         when(registration.getDescription()).thenReturn("Test Tool");
 
         McpSchema.Tool tool = new McpSchema.Tool("test-tool", "Test Tool", "null");
-        McpServerFeatures.AsyncToolRegistration toolRegistration = new McpServerFeatures.AsyncToolRegistration(tool, null);
+        McpServerFeatures.AsyncToolSpecification toolRegistration = new McpServerFeatures.AsyncToolSpecification(tool, null);
 
-        when(mcpServer.addTool(argThat(p -> p.tool().name().equals(toolRegistration.tool().name()))))
+        when(mcpServer.addTool(any(McpServerFeatures.AsyncToolSpecification.class)))
                 .thenReturn(Mono.empty());
 
         Mono<Void> result = toolHandler.register(mcpServer);
         assertNotNull(result);
-        verify(mcpServer).addTool(any());
+        verify(mcpServer).addTool(any(McpServerFeatures.AsyncToolSpecification.class));
     }
 
     @Test

@@ -11,13 +11,13 @@ import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
 import io.modelcontextprotocol.server.McpAsyncServer;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
-import io.modelcontextprotocol.util.UriTemplate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
 
+import javax.naming.OperationNotSupportedException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +48,7 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
      * @param mcpServer the server to register with
      * @return a mono that completes when the registration is complete
      */
-    public Mono<Void> register(McpAsyncServer mcpServer) {
+    public Mono<Void> register(McpAsyncServer mcpServer) throws OperationNotSupportedException {
         log.info("Registering resource {}", registration.getName());
 
         final McpSchema.Annotations annotations = new McpSchema.Annotations(
@@ -56,9 +56,12 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
                 1.0
         );
 
-        return (registration.isTemplate())
-                ? mcpServer.addResourceTemplate(getAsyncResourceTemplateRegistration(annotations))
-                : mcpServer.addResource(getAsyncResourceRegistration(annotations));
+        if (registration.isTemplate()) {
+            log.error("Resource templates are not supported");
+            return Mono.empty();
+        }
+
+        return mcpServer.addResource(getAsyncResourceRegistration(annotations));
     }
 
     /**
@@ -67,7 +70,7 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
      * @param annotations the annotations for the resource
      * @return the async resource registration
      */
-    McpServerFeatures.AsyncResourceRegistration getAsyncResourceRegistration(McpSchema.Annotations annotations) {
+    McpServerFeatures.AsyncResourceSpecification getAsyncResourceRegistration(McpSchema.Annotations annotations) {
         McpSchema.Resource resource = new McpSchema.Resource(
                 registration.getUrl(),
                 registration.getName(),
@@ -76,35 +79,35 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
                 annotations
         );
 
-        return new McpServerFeatures.AsyncResourceRegistration(
+        return new McpServerFeatures.AsyncResourceSpecification(
                 resource,
-                (arguments) -> Mono.create(sink -> sendRequest(
-                        arguments,
+                (arguments, rcsRequest) -> Mono.create(sink -> sendRequest(
+                        rcsRequest,
                         sink)));
     }
 
-    /**
-     * Get the async resource template registration
-     *
-     * @param annotations the annotations for the resource
-     * @return the async resource template registration
-     */
-    private McpServerFeatures.AsyncResourceTemplateRegistration getAsyncResourceTemplateRegistration(McpSchema.Annotations annotations) {
-        McpSchema.ResourceTemplate template = new McpSchema.ResourceTemplate(
-                registration.getUrl(),
-                registration.getName(),
-                registration.getDescription(),
-                registration.getMimeType(),
-                annotations
-        );
-
-        return new McpServerFeatures.AsyncResourceTemplateRegistration(
-                template,
-                new UriTemplate(registration.getUrl()),
-                (arguments) -> Mono.create(sink -> sendRequest(
-                        arguments,
-                        sink)));
-    }
+//    /**
+//     * Get the async resource template registration
+//     *
+//     * @param annotations the annotations for the resource
+//     * @return the async resource template registration
+//     */
+//    private McpServerFeatures.AsyncResourceTemplateRegistration getAsyncResourceTemplateRegistration(McpSchema.Annotations annotations) {
+//        McpSchema.ResourceTemplate template = new McpSchema.ResourceTemplate(
+//                registration.getUrl(),
+//                registration.getName(),
+//                registration.getDescription(),
+//                registration.getMimeType(),
+//                annotations
+//        );
+//
+//        return new McpServerFeatures.AsyncResourceTemplateRegistration(
+//                template,
+//                new UriTemplate(registration.getUrl()),
+//                (arguments) -> Mono.create(sink -> sendRequest(
+//                        arguments,
+//                        sink)));
+//    }
 
     @Override
     public Mono<Void> unregister(McpAsyncServer mcpServer) {

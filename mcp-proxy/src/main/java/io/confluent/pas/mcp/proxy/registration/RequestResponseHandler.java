@@ -57,18 +57,35 @@ public class RequestResponseHandler implements DisposableBean {
                                               String correlationId,
                                               Map<String, Object> request)
             throws ExecutionException, InterruptedException {
+        final Map<String, Object> key = Map.of(registration.getCorrelationIdFieldName(), correlationId);
+
+        return sendRequestResponse(
+                registration,
+                correlationId,
+                schemas.getRequestKeySchema().envelope(key),
+                schemas.getRequestSchema().envelope(request));
+    }
+
+    /**
+     * Send a request to a topic and wait for a response
+     *
+     * @param registration  the registration
+     * @param correlationId the correlation id
+     * @param key           the key
+     * @param request       the request
+     * @return the response
+     */
+    public Mono<JsonNode> sendRequestResponse(Schemas.Registration registration,
+                                              String correlationId,
+                                              JsonNode key,
+                                              JsonNode request) {
         Sinks.One<JsonNode> sink = Sinks.one();
 
         // Register the response handler
         consumerService.registerResponseHandler(registration, correlationId, sink::tryEmitValue);
 
-        // Create the Key
-        final Map<String, Object> key = Map.of(registration.getCorrelationIdFieldName(), correlationId);
-
         // Send the request
-        return producerService.send(registration.getRequestTopicName(),
-                        schemas.getRequestKeySchema().envelope(key),
-                        schemas.getRequestSchema().envelope(request))
+        return producerService.send(registration.getRequestTopicName(), key, request)
                 .doOnError(sink::tryEmitError)
                 .doOnSuccess(metadata -> log.info("Sent request to topic: {}", registration.getRequestTopicName()))
                 .then(sink.asMono());

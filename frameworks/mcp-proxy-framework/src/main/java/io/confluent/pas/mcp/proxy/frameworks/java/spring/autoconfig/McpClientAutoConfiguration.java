@@ -1,6 +1,5 @@
 package io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig;
 
-import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.AsyncMcpToolCallbackProvider;
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.ResourcesChangeEvent;
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.ToolsChangeEvent;
@@ -9,19 +8,20 @@ import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.client.transport.WebFluxSseClientTransport;
-import io.modelcontextprotocol.spec.ClientMcpTransport;
+import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.event.ApplicationEventMulticaster;
+import org.springframework.context.event.SimpleApplicationEventMulticaster;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunctions;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Auto-configuration class for Model Control Protocol (MCP) client.
+ * Autoconfiguration class for Model Control Protocol (MCP) client.
  * This class is activated when the 'mcp.client.connection-string' property is present.
  */
 @Slf4j
@@ -84,7 +84,7 @@ public class McpClientAutoConfiguration {
 
         if (!StringUtils.isEmpty(deniedTools)) {
             final List<String> tools = List.of(deniedTools.split(","));
-            return provider.denis(tools);
+            return provider.denies(tools);
         }
 
         return provider;
@@ -99,7 +99,7 @@ public class McpClientAutoConfiguration {
      */
     @Bean
     @ConditionalOnProperty(prefix = "mcp.client", name = "mode", havingValue = "sse")
-    public ClientMcpTransport sseServerTransport() {
+    public McpClientTransport sseServerTransport() {
         final WebClient.Builder webClientBuilder = (StringUtils.isNotEmpty(apiKey) && StringUtils.isNotEmpty(apiSecret))
                 ? WebClient.builder().filter(ExchangeFilterFunctions.basicAuthentication(apiKey, apiSecret)).baseUrl(connectionString.getFirst())
                 : WebClient.builder().baseUrl(connectionString.getFirst());
@@ -116,7 +116,7 @@ public class McpClientAutoConfiguration {
      */
     @Bean
     @ConditionalOnProperty(prefix = "mcp.client", name = "mode", havingValue = "stdio")
-    public ClientMcpTransport stdioServerTransport() {
+    public McpClientTransport stdioServerTransport() {
         final String command = connectionString.getFirst();
         final List<String> args = connectionString.size() > 1
                 ? connectionString.stream().skip(1).collect(Collectors.toList())
@@ -140,7 +140,7 @@ public class McpClientAutoConfiguration {
     @Bean
     @ConditionalOnProperty(prefix = "mcp.client", name = "mode")
     @ConditionalOnMissingBean()
-    public McpAsyncClient getMcpAsyncClient(ClientMcpTransport sseServerTransport,
+    public McpAsyncClient getMcpAsyncClient(McpClientTransport sseServerTransport,
                                             ApplicationEventPublisher applicationEventPublisher) {
         final McpAsyncClient client = McpClient.async(sseServerTransport)
                 .requestTimeout(Duration.ofSeconds(timeout))
@@ -161,4 +161,14 @@ public class McpClientAutoConfiguration {
 
         return client;
     }
+
+    @ConditionalOnMissingBean
+    @Bean(name = "applicationEventMulticaster")
+    public ApplicationEventMulticaster simpleApplicationEventMulticaster() {
+        SimpleApplicationEventMulticaster eventMulticaster = new SimpleApplicationEventMulticaster();
+
+        eventMulticaster.setTaskExecutor(new SimpleAsyncTaskExecutor());
+        return eventMulticaster;
+    }
+
 }
