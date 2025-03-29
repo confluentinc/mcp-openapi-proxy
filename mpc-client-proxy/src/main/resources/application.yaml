@@ -11,6 +11,7 @@ kafka:
   jaas-config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${JAAS_USERNAME}" password="${JAAS_PASSWORD}";
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
+  registration-topic-name: ${REGISTRY_TOPIC:#{null}}
 logging:
   file:
     name: ${LOG_FILE}

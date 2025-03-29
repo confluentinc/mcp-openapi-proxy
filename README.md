@@ -125,6 +125,7 @@ To run the proxy, set the following environment variables:
 ### Optional Environment Variable
 
 - `REGISTRY_TOPIC` - The topic for MCP registry (default: `_agent_registry`)
+- `CLIENT_ID` - The unique client id. If not specified, a new UUID will be generated and saved into a `.pid` file in the current directory.
 
 ## Contributing
 
