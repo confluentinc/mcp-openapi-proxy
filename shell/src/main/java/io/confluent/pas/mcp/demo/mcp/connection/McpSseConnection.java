@@ -1,7 +1,7 @@
 package io.confluent.pas.mcp.demo.mcp.connection;
 
 import io.modelcontextprotocol.client.transport.WebFluxSseClientTransport;
-import io.modelcontextprotocol.spec.ClientMcpTransport;
+import io.modelcontextprotocol.spec.McpClientTransport;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunctions;
@@ -20,7 +20,7 @@ public class McpSseConnection extends McpAbstractConnection {
     private final String password;
 
     @Override
-    protected ClientMcpTransport getTransport() {
+    protected McpClientTransport getTransport() {
         WebClient.Builder webClientBuilder = WebClient
                 .builder()
                 .filter(ExchangeFilterFunctions

@@ -2,7 +2,7 @@ package io.confluent.pas.mcp.demo.mcp.connection;
 
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
-import io.modelcontextprotocol.spec.ClientMcpTransport;
+import io.modelcontextprotocol.spec.McpClientTransport;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -19,7 +19,7 @@ public class McpStdioConnection extends McpAbstractConnection {
     private List<String> args;
 
     @Override
-    protected ClientMcpTransport getTransport() {
+    protected McpClientTransport getTransport() {
         ServerParameters params = ServerParameters.builder(command)
                 .args(args)
                 .build();

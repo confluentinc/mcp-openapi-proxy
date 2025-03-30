@@ -7,7 +7,7 @@ import io.confluent.pas.mcp.demo.mcp.McpServerConnection;
 import io.confluent.pas.mcp.demo.mcp.tools.ToolExecutionHelper;
 import io.modelcontextprotocol.client.McpAsyncClient;
 import io.modelcontextprotocol.client.McpClient;
-import io.modelcontextprotocol.spec.ClientMcpTransport;
+import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.Getter;
 import reactor.core.publisher.Mono;
@@ -77,7 +77,7 @@ public abstract class McpAbstractConnection implements McpServerConnection {
 
     @Override
     public Mono<Void> connect() {
-        final ClientMcpTransport transport = getTransport();
+        final McpClientTransport transport = getTransport();
 
         return Mono.create(sink -> {
             client = McpClient.async(transport)
@@ -116,6 +116,6 @@ public abstract class McpAbstractConnection implements McpServerConnection {
      *
      * @return the transport
      */
-    protected abstract ClientMcpTransport getTransport();
+    protected abstract McpClientTransport getTransport();
 
 }
