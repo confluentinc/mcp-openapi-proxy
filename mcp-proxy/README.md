@@ -42,7 +42,7 @@
         - [Optional Environment Variable](#optional-environment-variable)
     - [Contributing](#contributing)
     - [License](#license)
-  
+
 ## Overview
 
 The **Proxy** service is designed to bridge Confluent Cloud topics with structured APIs by implementing the **MCP
@@ -527,6 +527,8 @@ The proxy requires specific environment variables for correct operation:
 ### Optional Environment Variable
 
 - `REGISTRY_TOPIC`   - The topic for MCP registry (default: `_agent_registry`)
+- `CLIENT_ID` - The unique client id. If not specified, a new UUID will be generated and saved into a `.pid` file in the
+  current directory.
 
 ## Contributing
 
