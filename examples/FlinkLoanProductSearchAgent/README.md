@@ -2,6 +2,28 @@
 
 [Back to Main README](../../README.md)
 
+## Table of Contents
+
+- [Flink-Based Loan Product Search Agent](#flink-based-loan-product-search-agent)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Architecture](#architecture)
+  - [Prerequisites](#prerequisites)
+  - [Step-by-Step Guide](#step-by-step-guide)
+    - [1. Set Up Flink Connections](#1-set-up-flink-connections)
+    - [2. Create Bedrock Models](#2-create-bedrock-models)
+    - [3. Set Up Elasticsearch](#3-set-up-elasticsearch)
+    - [4. Create Flink Tables](#4-create-flink-tables)
+    - [5. Set Up Document Indexing](#5-set-up-document-indexing)
+      - [5.1 Create Elasticsearch Sink Connector](#51-create-elasticsearch-sink-connector)
+      - [5.2 Insert Sample Products](#52-insert-sample-products)
+      - [5.3 Generate Product Summaries](#53-generate-product-summaries)
+      - [5.4 Generate Product Embeddings](#54-generate-product-embeddings)
+    - [6. Create the Processing Pipeline](#6-create-the-processing-pipeline)
+    - [7. Register the Agent with MCP/OpenAPI Proxy](#7-register-the-agent-with-mcpopenapi-proxy)
+  - [Testing the Agent](#testing-the-agent)
+  - [Conclusion](#conclusion)
+
 ## Overview
 
 This tutorial demonstrates how to create a real-time loan product search agent using Confluent Flink and expose it as a
