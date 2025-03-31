@@ -101,20 +101,20 @@ mvn clean install
 
 ```sh
 # follow the prompts
-./set-env.sh
+./set_env.sh
 ```
 
 ### Running the Proxy
 
 ```sh
-source .env # load environment variables set by set-env.sh
+source .env # load environment variables set by set_env.sh
 java -jar proxy/target/proxy-0.0.1-SNAPSHOT.jar
 ```
 
 ### Using the SHELL
 
 ```sh
-source .env # load environment variables set by set-env.sh
+source .env # load environment variables set by set_env.sh
 java -jar shell/target/shell-0.0.1-SNAPSHOT.jar
 ```
 
