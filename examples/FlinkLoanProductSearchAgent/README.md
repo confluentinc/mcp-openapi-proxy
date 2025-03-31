@@ -20,6 +20,8 @@
       - [5.3 Generate Product Summaries](#53-generate-product-summaries)
       - [5.4 Generate Product Embeddings](#54-generate-product-embeddings)
     - [6. Create the Processing Pipeline](#6-create-the-processing-pipeline)
+      - [6.1 Generate Message Embeddings](#61-generate-message-embeddings)
+      - [6.2 Correlate products to messages](#62-correlate-products-to-messages)
     - [7. Register the Agent with MCP/OpenAPI Proxy](#7-register-the-agent-with-mcpopenapi-proxy)
   - [Testing the Agent](#testing-the-agent)
   - [Conclusion](#conclusion)
@@ -675,17 +677,24 @@ from
 
 ### 6. Create the Processing Pipeline
 
-Set up the data processing flow:
+#### 6.1 Generate Message Embeddings
+
+Generate embeddings for user messages
 
 ```sql
--- Generate embeddings for user messages
 INSERT INTO user_message_embeddings
 SELECT correlationId,
        message,
        embeddings
 FROM user_message,
      LATERAL TABLE (ML_PREDICT ('BedrockTitanEmbed', message));
+```
 
+#### 6.2 Correlate products to messages
+
+Use the generated message embeddings to find 3 related products
+
+```sql
 -- Find related products using vector search
 INSERT INTO user_message_related_products
 SELECT correlationId,
