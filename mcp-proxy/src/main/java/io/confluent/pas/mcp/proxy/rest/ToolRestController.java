@@ -1,5 +1,6 @@
 package io.confluent.pas.mcp.proxy.rest;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.RegistrationCoordinator;
 import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
@@ -65,8 +66,8 @@ public class ToolRestController {
         }
 
         // Get the registration handler for the tool
-        final RegistrationHandler<Map<String, Object>, Map<String, Object>> handler =
-                (RegistrationHandler<Map<String, Object>, Map<String, Object>>) coordinator.getRegistrationHandler(toolName);
+        final RegistrationHandler<Map<String, Object>, JsonNode> handler =
+                (RegistrationHandler<Map<String, Object>, JsonNode>) coordinator.getRegistrationHandler(toolName);
 
         // Process the request body and send it to the handler
         return request.bodyToMono(MAP_TYPE)

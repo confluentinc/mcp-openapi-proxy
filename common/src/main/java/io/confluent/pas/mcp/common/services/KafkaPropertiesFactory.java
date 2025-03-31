@@ -97,7 +97,7 @@ public class KafkaPropertiesFactory {
      */
     public static Properties getProducerProperties(KafkaConfiguration configration) {
         Properties properties = getDefaultProperties(configration, "");
-        properties.put(ProducerConfig.CLIENT_ID_CONFIG, configration.applicationId());
+        properties.put(ProducerConfig.CLIENT_ID_CONFIG, configration.applicationId() + "-" + configration.clientId());
         properties.put("key.serializer", KafkaJsonSchemaSerializer.class.getName());
         properties.put("value.serializer", KafkaJsonSchemaSerializer.class.getName());
         properties.put(KafkaJsonSchemaSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
@@ -119,7 +119,7 @@ public class KafkaPropertiesFactory {
                                                    Class<?> keyType,
                                                    Class<?> valueType) {
         final Properties properties = getDefaultProperties(configration, "");
-        properties.put(ConsumerConfig.CLIENT_ID_CONFIG, configration.applicationId() + UUID.randomUUID());
+        properties.put(ConsumerConfig.CLIENT_ID_CONFIG, configration.applicationId() + "-" + configration.clientId());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, configration.applicationId() + "-group");
 
         if (requireEarliest) {
@@ -149,7 +149,7 @@ public class KafkaPropertiesFactory {
     public static KafkaCacheConfig getCacheConfig(KafkaConfiguration configration, boolean readOnly) {
         Properties properties = getDefaultProperties(configration, "kafkacache.");
         properties.put(KafkaCacheConfig.KAFKACACHE_TOPIC_CONFIG, configration.registrationTopicName());
-        properties.put(KafkaCacheConfig.KAFKACACHE_CLIENT_ID_CONFIG, configration.applicationId() + "-registration");
+        properties.put(KafkaCacheConfig.KAFKACACHE_CLIENT_ID_CONFIG, configration.applicationId() + "-registration" + "-" + configration.clientId());
         properties.put(KafkaCacheConfig.KAFKACACHE_GROUP_ID_CONFIG, configration.applicationId() + "-registration" + "-group");
         properties.put(KafkaCacheConfig.KAFKACACHE_TOPIC_READ_ONLY_CONFIG, readOnly);
         return new KafkaCacheConfig(properties);

@@ -2,6 +2,7 @@ package io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig;
 
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 import io.confluent.pas.mcp.common.services.TopicConfiguration;
+import io.confluent.pas.mcp.common.utils.ClientID;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -13,12 +14,15 @@ import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
 /**
- * Auto-configuration class for MCP Proxy Kafka settings.
+ * Autoconfiguration class for MCP Proxy Kafka settings.
  * Provides configuration beans for Kafka connection and topic management.
  */
 @AutoConfiguration
 @AutoConfigureOrder
 public class McpProxyAutoConfiguration {
+
+    @Value(("${kafka.client-id:#{null}}"))
+    private String clientId;
 
     /**
      * Comma-separated list of Kafka broker addresses
@@ -78,7 +82,8 @@ public class McpProxyAutoConfiguration {
      * Implementation record for Kafka configuration settings.
      * Provides immutable storage of all Kafka-related configuration parameters.
      */
-    public record KafkaConfigurationImpl(String brokerServers, String schemaRegistryUrl, String applicationId,
+    public record KafkaConfigurationImpl(String clientId, String brokerServers, String schemaRegistryUrl,
+                                         String applicationId,
                                          String securityProtocol, String saslMechanism, String saslJaasConfig,
                                          String schemaRegistryBasicAuthUserInfo, String registrationTopicName,
                                          TopicConfiguration topicConfiguration) implements KafkaConfiguration {
@@ -87,7 +92,8 @@ public class McpProxyAutoConfiguration {
          * Constructs a new KafkaConfigurationImpl with the specified parameters.
          * Applies default values where necessary and ensures all required fields are properly initialized.
          */
-        public KafkaConfigurationImpl(String brokerServers,
+        public KafkaConfigurationImpl(String clientId,
+                                      String brokerServers,
                                       String schemaRegistryUrl,
                                       String applicationId,
                                       String securityProtocol,
@@ -96,6 +102,7 @@ public class McpProxyAutoConfiguration {
                                       String schemaRegistryBasicAuthUserInfo,
                                       String registrationTopicName,
                                       TopicConfiguration topicConfiguration) {
+            this.clientId = StringUtils.isEmpty(clientId) ? ClientID.getOrCreateClientId() : clientId;
             this.brokerServers = brokerServers;
             this.schemaRegistryUrl = schemaRegistryUrl;
             this.applicationId = applicationId;
@@ -131,6 +138,7 @@ public class McpProxyAutoConfiguration {
     @ConditionalOnMissingBean
     public KafkaConfiguration getKafkaConfiguration() {
         return new KafkaConfigurationImpl(
+                clientId,
                 brokerServers,
                 schemaRegistryUrl,
                 applicationId,

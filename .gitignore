@@ -156,3 +156,4 @@ services/websocket/src/main/resources/static/
 pyproject.toml
 uv.lock
 logs/
+.pid

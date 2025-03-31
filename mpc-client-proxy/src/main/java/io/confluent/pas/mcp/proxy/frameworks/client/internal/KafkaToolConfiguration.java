@@ -4,6 +4,7 @@ import io.confluent.pas.mcp.common.services.KafkaConfiguration;
 
 public class KafkaToolConfiguration implements KafkaConfiguration {
 
+    private final String clientId;
     private final String brokerServers;
     private final String schemaRegistryUrl;
     private final String applicationId;
@@ -11,11 +12,17 @@ public class KafkaToolConfiguration implements KafkaConfiguration {
     private final String schemaRegistryBasicAuthUserInfo;
 
     public KafkaToolConfiguration(KafkaConfiguration other, AgentConfiguration.ToolConfiguration tool) {
+        this.clientId = other.clientId();
         this.brokerServers = other.brokerServers();
         this.schemaRegistryUrl = other.schemaRegistryUrl();
         this.applicationId = tool.getName() + "_" + other.applicationId();
         this.saslJaasConfig = other.saslJaasConfig();
         this.schemaRegistryBasicAuthUserInfo = other.schemaRegistryBasicAuthUserInfo();
+    }
+
+    @Override
+    public String clientId() {
+        return clientId;
     }
 
     @Override
