@@ -27,7 +27,7 @@ Before starting, ensure you have:
 
 1. A Confluent Cloud account with Flink enabled
 2. The Confluent CLI installed and configured
-3. An Elasticsearch cluster set up and accessible, with api key/secrets and an account with appropriate permisions
+3. An Elasticsearch cluster set up and accessible, with api key/secrets and an account with appropriate permissions
 4. AWS credentials for accessing Bedrock services
 
 ## Step-by-Step Guide
