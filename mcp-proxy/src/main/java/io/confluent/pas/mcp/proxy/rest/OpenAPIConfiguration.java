@@ -264,7 +264,7 @@ public class OpenAPIConfiguration {
                                 return propertySchema;
                             })));
         }
-        
+
         if (schemaProperties.additionalProperties != null) {
             schema.setAdditionalProperties(schemaProperties.additionalProperties);
         }
