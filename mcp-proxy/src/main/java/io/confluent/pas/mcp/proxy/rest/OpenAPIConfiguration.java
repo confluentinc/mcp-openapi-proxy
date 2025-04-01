@@ -23,9 +23,7 @@ import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.avro.data.Json;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springdoc.core.customizers.OpenApiCustomizer;
@@ -60,7 +58,6 @@ public class OpenAPIConfiguration {
 
     private final RegistrationCoordinator registrationCoordinator;
 
-    @Autowired
     public OpenAPIConfiguration(RegistrationCoordinator registrationCoordinator) {
         this.registrationCoordinator = registrationCoordinator;
     }

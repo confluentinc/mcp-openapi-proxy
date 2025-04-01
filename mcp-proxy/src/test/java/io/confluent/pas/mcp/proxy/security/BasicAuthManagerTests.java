@@ -5,6 +5,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.pas.mcp.common.services.KafkaConfiguration;
+import io.confluent.pas.mcp.proxy.security.basic.BasicAuthManager;
+import io.confluent.pas.mcp.proxy.security.basic.UserAuthenticated;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -18,7 +20,7 @@ import java.util.ArrayDeque;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class AuthManagerTests {
+class BasicAuthManagerTests {
 
     @Mock
     private KafkaConfiguration kafkaConfiguration;
@@ -29,7 +31,7 @@ class AuthManagerTests {
     @Mock
     private SchemaRegistryClient schemaRegistryClient;
 
-    private AuthManager authManager;
+    private BasicAuthManager basicAuthManager;
 
     private Cache<String, UserAuthenticated> usersAuthenticated;
 
@@ -37,9 +39,9 @@ class AuthManagerTests {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         usersAuthenticated = Caffeine.newBuilder().maximumSize(100).build();
-        authManager = new AuthManager(kafkaConfiguration, usersAuthenticated);
-        authManager = spy(authManager);
-        doReturn(schemaRegistryClient).when(authManager).createSchemaRegistryClient(anyMap());
+        basicAuthManager = new BasicAuthManager(kafkaConfiguration, usersAuthenticated);
+        basicAuthManager = spy(basicAuthManager);
+        doReturn(schemaRegistryClient).when(basicAuthManager).createSchemaRegistryClient(anyMap());
     }
 
     @Test
@@ -51,7 +53,7 @@ class AuthManagerTests {
 
         when(schemaRegistryClient.getAllSubjects()).thenReturn(new ArrayDeque<>());
 
-        Mono<Authentication> result = authManager.authenticate(authentication);
+        Mono<Authentication> result = basicAuthManager.authenticate(authentication);
 
         StepVerifier.create(result)
                 .expectNextMatches(auth -> auth.isAuthenticated() && auth.getPrincipal().equals(principal))
@@ -70,7 +72,7 @@ class AuthManagerTests {
 
         doThrow(new RestClientException("Unauthorized", 401, 401)).when(schemaRegistryClient).getAllSubjects();
 
-        Mono<Authentication> result = authManager.authenticate(authentication);
+        Mono<Authentication> result = basicAuthManager.authenticate(authentication);
 
         StepVerifier.create(result)
                 .expectNextMatches(auth -> !auth.isAuthenticated() && auth.getPrincipal().equals(principal))
@@ -89,7 +91,7 @@ class AuthManagerTests {
 
         doThrow(new RuntimeException("Unexpected error")).when(schemaRegistryClient).getAllSubjects();
 
-        Mono<Authentication> result = authManager.authenticate(authentication);
+        Mono<Authentication> result = basicAuthManager.authenticate(authentication);
 
         StepVerifier.create(result)
                 .expectError(RuntimeException.class)

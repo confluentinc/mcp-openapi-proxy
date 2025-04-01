@@ -1,20 +1,13 @@
 package io.confluent.pas.mcp.proxy.frameworks.java.spring.autoconfig;
 
 import io.confluent.pas.mcp.common.services.Schemas;
-import io.confluent.pas.mcp.proxy.frameworks.java.spring.mcp.AsyncMcpToolCallbackProvider;
-import io.modelcontextprotocol.client.McpAsyncClient;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
-
-import java.util.List;
 
 /**
  * Auto-configuration class for MCP (Model Control Protocol) agent registration.

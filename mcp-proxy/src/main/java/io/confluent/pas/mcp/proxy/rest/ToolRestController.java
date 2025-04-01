@@ -7,7 +7,6 @@ import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
 import io.confluent.pas.mcp.proxy.registration.handlers.ResourceHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -34,7 +33,6 @@ public class ToolRestController {
     // Map to store resource handlers by URL
     private final Map<String, ResourceHandler> resourceHandlers = new HashMap<>();
 
-    @Autowired
     public ToolRestController(RegistrationCoordinator coordinator) {
         this.coordinator = coordinator;
 

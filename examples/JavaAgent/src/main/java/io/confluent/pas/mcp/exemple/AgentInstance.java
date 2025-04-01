@@ -7,7 +7,6 @@ import io.confluent.pas.mcp.proxy.frameworks.java.models.Key;
 import io.confluent.pas.mcp.proxy.frameworks.java.Request;
 import io.confluent.pas.mcp.proxy.frameworks.java.spring.annotation.Agent;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +25,6 @@ public class AgentInstance {
      * @param geminiKey    The API key for the Google AI Gemini model.
      * @param systemPrompt The system prompt to be used by the assistant.
      */
-    @Autowired
     public AgentInstance(@Value("${model.gemini-key}") String geminiKey,
                          @Value("${model.system-prompt}") String systemPrompt) {
         // Create a ChatLanguageModel using the Google AI Gemini model

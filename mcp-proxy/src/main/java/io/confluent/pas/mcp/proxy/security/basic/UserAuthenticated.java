@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.security;
+package io.confluent.pas.mcp.proxy.security.basic;
 
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.Authentication;

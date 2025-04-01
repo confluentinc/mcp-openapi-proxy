@@ -176,15 +176,4 @@ public class KafkaChatMemory implements ChatMemory {
         cache.init();
         return cache;
     }
-
-    private Memory getOrCreateMemory(String conversationId) {
-        final Memory memory;
-        if (memoryKafkaCache.containsKey(conversationId)) {
-            memory = memoryKafkaCache.get(conversationId);
-            memoryKafkaCache.remove(conversationId);
-        } else {
-            memory = new Memory();
-        }
-        return memory;
-    }
 }

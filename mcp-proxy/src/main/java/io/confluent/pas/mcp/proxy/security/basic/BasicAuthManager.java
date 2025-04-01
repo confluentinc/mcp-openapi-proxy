@@ -1,4 +1,4 @@
-package io.confluent.pas.mcp.proxy.security;
+package io.confluent.pas.mcp.proxy.security.basic;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -24,7 +24,7 @@ import java.util.Map;
  * This class uses a schema registry client to authenticate users and caches authenticated users.
  */
 @Slf4j
-public class AuthManager implements ReactiveAuthenticationManager {
+public class BasicAuthManager implements ReactiveAuthenticationManager {
 
     private static final String BASIC_AUTH_CREDENTIALS_SOURCE = "basic.auth.credentials.source";
     private static final String USER_INFO = "USER_INFO";
@@ -40,7 +40,7 @@ public class AuthManager implements ReactiveAuthenticationManager {
      * @param cacheSize          the size of the cache
      * @param cacheExpiry        the expiry time for cache entries in seconds
      */
-    public AuthManager(KafkaConfiguration kafkaConfiguration, int cacheSize, int cacheExpiry) {
+    public BasicAuthManager(KafkaConfiguration kafkaConfiguration, int cacheSize, int cacheExpiry) {
         this(kafkaConfiguration, Caffeine.newBuilder()
                 .maximumSize(cacheSize)
                 .expireAfterWrite(Duration.ofSeconds(cacheExpiry))
@@ -53,7 +53,7 @@ public class AuthManager implements ReactiveAuthenticationManager {
      * @param kafkaConfiguration the schema registry configuration
      * @param usersAuthenticated the cache for storing authenticated users
      */
-    public AuthManager(KafkaConfiguration kafkaConfiguration, Cache<String, UserAuthenticated> usersAuthenticated) {
+    public BasicAuthManager(KafkaConfiguration kafkaConfiguration, Cache<String, UserAuthenticated> usersAuthenticated) {
         this.kafkaConfiguration = kafkaConfiguration;
         this.usersAuthenticated = usersAuthenticated;
     }
@@ -97,7 +97,7 @@ public class AuthManager implements ReactiveAuthenticationManager {
      * @param config the schema registry configuration map
      * @return the SchemaRegistryClient instance
      */
-    SchemaRegistryClient createSchemaRegistryClient(Map<String, Object> config) {
+    public SchemaRegistryClient createSchemaRegistryClient(Map<String, Object> config) {
         return SchemaRegistryClientFactory.newClient(
                 List.of(kafkaConfiguration.schemaRegistryUrl()),
                 1,
