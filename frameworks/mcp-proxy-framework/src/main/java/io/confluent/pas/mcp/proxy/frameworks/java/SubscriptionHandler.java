@@ -49,7 +49,7 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
      * @param <REQ> Request payload type
      * @param <RES> Response payload type
      */
-    public interface RequestHandler<K, REQ, RES> {
+    public interface RequestHandler<K extends Key, REQ, RES> {
         void onRequest(Request<K, REQ, RES> request);
     }
 

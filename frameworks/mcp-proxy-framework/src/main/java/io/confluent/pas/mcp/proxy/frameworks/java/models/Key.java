@@ -1,6 +1,10 @@
 package io.confluent.pas.mcp.proxy.frameworks.java.models;
 
 import io.confluent.kafka.schemaregistry.annotations.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Schema(value = """
         {
@@ -18,5 +22,11 @@ import io.confluent.kafka.schemaregistry.annotations.Schema;
          }
         """,
         refs = {})
-public record Key(String correlationId) {
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public class Key {
+
+    private String correlationId;
 }
