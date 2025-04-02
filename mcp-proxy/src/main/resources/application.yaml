@@ -22,6 +22,7 @@ kafka:
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
   registration-topic-name: ${REGISTRY_TOPIC:#{null}}
+  response-timeout: ${RESPONSE_TIMEOUT:20000}
 authentication:
   enabled: true
   basic:
@@ -30,6 +31,17 @@ authentication:
   jwt:
     issuer-uri: ${JWT_ISSUER:#{null}}
     audience: ${JWT_AUDIENCE:#{null}}
+management:
+  server:
+    port: 8081
+  appoptics:
+    metrics:
+      export:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health
 ---
 spring:
   config:
@@ -55,8 +67,20 @@ kafka:
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
   registration-topic-name: ${REGISTRY_TOPIC:#{null}}
+  response-timeout: ${RESPONSE_TIMEOUT:20000}
 authentication:
   enabled: false
+management:
+  server:
+    port: 8081
+  appoptics:
+    metrics:
+      export:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "*"
 ---
 spring:
   config:
@@ -80,6 +104,7 @@ kafka:
   sr-url: ${SR_URL}
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
   registration-topic-name: ${REGISTRY_TOPIC:#{null}}
+  response-timeout: ${RESPONSE_TIMEOUT:20000}
 logging:
   file:
     name: ${LOG_FILE}

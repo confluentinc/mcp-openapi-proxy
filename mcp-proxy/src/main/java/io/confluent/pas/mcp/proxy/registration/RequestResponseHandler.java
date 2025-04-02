@@ -6,9 +6,12 @@ import io.confluent.pas.mcp.proxy.registration.kafka.ProducerService;
 import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.kafka.ConsumerService;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -26,15 +29,23 @@ public class RequestResponseHandler implements DisposableBean {
 
     private final ProducerService producerService;
     private final ConsumerService consumerService;
+    private final ObservationRegistry observationRegistry;
 
     @Autowired
-    public RequestResponseHandler(KafkaConfiguration kafkaConfiguration) {
-        this(new ProducerService(kafkaConfiguration), new ConsumerService(kafkaConfiguration));
+    public RequestResponseHandler(KafkaConfiguration kafkaConfiguration,
+                                  ObservationRegistry observationRegistry,
+                                  @Value("${kafka.response.timeout:10000}") long responseTimeout) {
+        this(new ProducerService(kafkaConfiguration),
+                new ConsumerService(kafkaConfiguration, responseTimeout),
+                observationRegistry);
     }
 
-    public RequestResponseHandler(ProducerService producerService, ConsumerService consumerService) {
+    public RequestResponseHandler(ProducerService producerService,
+                                  ConsumerService consumerService,
+                                  ObservationRegistry observationRegistry) {
         this.producerService = producerService;
         this.consumerService = consumerService;
+        this.observationRegistry = observationRegistry;
     }
 
     public void addRegistrations(Collection<Schemas.Registration> registrations) {
@@ -59,11 +70,18 @@ public class RequestResponseHandler implements DisposableBean {
             throws ExecutionException, InterruptedException {
         final Map<String, Object> key = Map.of(registration.getCorrelationIdFieldName(), correlationId);
 
-        return sendRequestResponse(
-                registration,
-                correlationId,
-                schemas.getRequestKeySchema().envelope(key),
-                schemas.getRequestSchema().envelope(request));
+        final Observation observation = Observation.start("agent.proxy." + registration.getName(), observationRegistry)
+                .contextualName("sendRequestResponse")
+                .lowCardinalityKeyValue("correlationId", correlationId)
+                .highCardinalityKeyValue("name", registration.getName());
+
+        return observation.observe(() -> sendRequestResponse(
+                        registration,
+                        correlationId,
+                        schemas.getRequestKeySchema().envelope(key),
+                        schemas.getRequestSchema().envelope(request)))
+                .doOnError(observation::error)
+                .doFinally(signalType -> observation.stop());
     }
 
     /**
@@ -82,7 +100,11 @@ public class RequestResponseHandler implements DisposableBean {
         Sinks.One<JsonNode> sink = Sinks.one();
 
         // Register the response handler
-        consumerService.registerResponseHandler(registration, correlationId, sink::tryEmitValue);
+        consumerService.registerResponseHandler(
+                registration,
+                correlationId,
+                sink::tryEmitValue,
+                sink::tryEmitError);
 
         // Send the request
         return producerService.send(registration.getRequestTopicName(), key, request)

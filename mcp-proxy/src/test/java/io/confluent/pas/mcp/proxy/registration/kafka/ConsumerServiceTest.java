@@ -26,7 +26,7 @@ class ConsumerServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        consumerService = new ConsumerService(consumer);
+        consumerService = new ConsumerService(consumer, 10000);
     }
 
     @Test
@@ -41,8 +41,9 @@ class ConsumerServiceTest {
     void testRegisterResponseHandler() {
         Schemas.Registration registration = new Schemas.Registration("testTool", "testDescription", "requestTopic", "responseTopic");
         ConsumerService.ResponseHandler handler = mock(ConsumerService.ResponseHandler.class);
+        ConsumerService.ErrorHandler errorHandler = mock(ConsumerService.ErrorHandler.class);
 
-        consumerService.registerResponseHandler(registration, "correlationId", handler);
+        consumerService.registerResponseHandler(registration, "correlationId", handler, errorHandler);
 
         ArgumentCaptor<String> topicCaptor = ArgumentCaptor.forClass(String.class);
         verify(consumer).subscribe(topicCaptor.capture());
@@ -50,14 +51,16 @@ class ConsumerServiceTest {
 
         Map<String, ConsumerService.RegistrationItem> responseHandlers = consumerService.getResponseHandlers();
         assertTrue(responseHandlers.containsKey("responseTopic"));
-        assertTrue(responseHandlers.get("responseTopic").responseHandlers().containsKey("correlationid"));
+        assertTrue(responseHandlers.get("responseTopic").registrationHandlers().containsKey("correlationid"));
     }
 
     @Test
     void testHandleResponse() throws IOException {
         Schemas.Registration registration = new Schemas.Registration("testTool", "testDescription", "requestTopic", "responseTopic");
         ConsumerService.ResponseHandler handler = mock(ConsumerService.ResponseHandler.class);
-        consumerService.registerResponseHandler(registration, "correlationId", handler);
+        ConsumerService.ErrorHandler errorHandler = mock(ConsumerService.ErrorHandler.class);
+
+        consumerService.registerResponseHandler(registration, "correlationId", handler, errorHandler);
 
         ObjectMapper mapper = new ObjectMapper();
         JsonNode key = mapper.readTree("{\"correlationId\": \"correlationId\"}");

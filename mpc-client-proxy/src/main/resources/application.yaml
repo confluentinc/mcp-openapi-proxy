@@ -17,3 +17,14 @@ logging:
     name: ${LOG_FILE}
   pattern:
     console: ""
+management:
+  server:
+    port: 8081
+  appoptics:
+    metrics:
+      export:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "*"
