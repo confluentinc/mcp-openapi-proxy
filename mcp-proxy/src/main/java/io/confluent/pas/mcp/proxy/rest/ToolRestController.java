@@ -40,7 +40,7 @@ public class ToolRestController {
 
     /**
      * Constructor that initializes the controller and sets up resource handlers.
-     * 
+     *
      * @param registrationCoordinator the coordinator for managing registrations
      */
     public ToolRestController(RegistrationCoordinator registrationCoordinator) {
@@ -175,7 +175,7 @@ public class ToolRestController {
 
     /**
      * Extract the content from the resource response.
-     * 
+     *
      * @param response the resource response
      * @return the response content as a string
      */
@@ -191,7 +191,7 @@ public class ToolRestController {
 
     /**
      * Create an error response with the given status and message.
-     * 
+     *
      * @param status  the HTTP status
      * @param message the error message
      * @return the server response Mono
@@ -208,7 +208,6 @@ public class ToolRestController {
      * @param urlParts the URL parts
      * @return an Optional containing the handler if found, empty otherwise
      */
-    @SuppressWarnings("unchecked")
     private Optional<RegistrationHandler<Schemas.ResourceRequest, Schemas.ResourceResponse>> findResourceHandler(
             List<String> urlParts) {
         return resourceHandlersByUrlPattern.keySet().stream()
@@ -241,7 +240,7 @@ public class ToolRestController {
 
     /**
      * Check if a pattern part matches a URL part.
-     * 
+     *
      * @param patternPart the pattern part
      * @param urlPart     the URL part
      * @return true if the pattern part matches the URL part

@@ -58,7 +58,7 @@ public class ResourceHandler implements RegistrationHandler<Schemas.ResourceRequ
 
         if (registration.isTemplate()) {
             log.error("Resource template registration is not supported");
-            throw new OperationNotSupportedException("Resource template registration is not supported");
+            return Mono.error(new OperationNotSupportedException("Resource template registration is not supported"));
 //            return mcpServer.addResourceTemplate(getAsyncResourceTemplateRegistration(annotations));
         }
 
