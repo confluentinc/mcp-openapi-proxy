@@ -150,7 +150,7 @@ public class ConsumerService implements Closeable {
      * @param correlationId The correlation ID to associate with the handler
      * @param handler       The handler to process responses
      * @param errorHandler  The handler to process errors
-     *                      um time to wait for a response before timing
+     *
      * @throws NullPointerException if any parameter is null
      */
     public void registerResponseHandler(
