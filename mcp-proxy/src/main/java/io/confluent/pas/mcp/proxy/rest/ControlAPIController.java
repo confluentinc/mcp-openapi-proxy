@@ -4,7 +4,6 @@ import io.confluent.pas.mcp.common.services.Schemas;
 import io.confluent.pas.mcp.proxy.registration.RegistrationCoordinator;
 import io.confluent.pas.mcp.proxy.registration.RegistrationHandler;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -17,7 +16,6 @@ public class ControlAPIController {
 
     private final RegistrationCoordinator coordinator;
 
-    @Autowired
     public ControlAPIController(RegistrationCoordinator coordinator) {
         this.coordinator = coordinator;
     }

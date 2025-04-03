@@ -23,9 +23,13 @@ kafka:
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
   registration-topic-name: ${REGISTRY_TOPIC:#{null}}
 authentication:
-  cache-size: 100
-  cache-expiry-in-second: 300
   enabled: true
+  basic:
+    cache-size: 100
+    cache-expiry-in-second: 3600
+  jwt:
+    issuer-uri: ${JWT_ISSUER:#{null}}
+    audience: ${JWT_AUDIENCE:#{null}}
 ---
 spring:
   config:
@@ -52,8 +56,6 @@ kafka:
   sr-basic-auth: ${SR_API_KEY}:${SR_API_SECRET}
   registration-topic-name: ${REGISTRY_TOPIC:#{null}}
 authentication:
-  cache-size: 100
-  cache-expiry-in-second: 300
   enabled: false
 ---
 spring:
@@ -83,3 +85,5 @@ logging:
     name: ${LOG_FILE}
   pattern:
     console: ""
+authentication:
+  enabled: false

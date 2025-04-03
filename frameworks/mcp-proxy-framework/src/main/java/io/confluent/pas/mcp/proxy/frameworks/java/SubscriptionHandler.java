@@ -49,7 +49,7 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
      * @param <REQ> Request payload type
      * @param <RES> Response payload type
      */
-    public interface RequestHandler<K, REQ, RES> {
+    public interface RequestHandler<K extends Key, REQ, RES> {
         void onRequest(Request<K, REQ, RES> request);
     }
 
@@ -210,7 +210,7 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
                                      Class<K> keyClass,
                                      Class<T> requestClass,
                                      Class<U> responseClass) throws Exception {
-        try (TopicManagement topicManagement = topicManagementSupplier.get(); topicManagement) {
+        try (TopicManagement topicManagement = topicManagementSupplier.get()) {
             topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestClass);
             topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseClass);
             log.debug("Created topics for registration: {}", registration.getName());
@@ -223,7 +223,7 @@ public class SubscriptionHandler<K extends Key, REQ, RES> implements Closeable {
     private void createTopicsWithSchemas(Schemas.Registration registration,
                                          JsonSchema requestSchema,
                                          JsonSchema responseSchema) throws Exception {
-        try (TopicManagement topicManagement = topicManagementSupplier.get(); topicManagement) {
+        try (TopicManagement topicManagement = topicManagementSupplier.get()) {
             topicManagement.createTopic(registration.getRequestTopicName(), keyClass, requestSchema);
             topicManagement.createTopic(registration.getResponseTopicName(), keyClass, responseSchema);
             log.debug("Created topics with schemas for registration: {}", registration.getName());

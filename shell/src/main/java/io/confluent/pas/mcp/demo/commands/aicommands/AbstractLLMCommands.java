@@ -8,7 +8,6 @@ import dev.langchain4j.service.tool.ToolProvider;
 import io.confluent.pas.mcp.demo.commands.Assistant;
 import io.confluent.pas.mcp.demo.commands.McpConnections;
 import io.confluent.pas.mcp.demo.mcp.tools.McpToolProvider;
-import org.apache.commons.lang3.StringUtils;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 

@@ -1,5 +1,6 @@
 package io.confluent.pas.mcp.proxy.security;
 
+import io.confluent.pas.mcp.proxy.security.basic.UserAuthenticated;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;

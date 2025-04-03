@@ -1,34 +1,35 @@
 package io.confluent.pas.mcp.common.utils;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Implements URI Template handling according to RFC 6570. This class allows for the
- * expansion of URI templates with variables and also supports matching URIs against
- * templates to extract variables.
+ * Implements URI Template handling according to RFC 6570.
  * <p>
- * URI templates are strings with embedded expressions enclosed in curly braces, such as:
- * http://example.com/{username}/profile{?tab,section}
+ * This class allows for matching URIs against templates to extract variables.
+ * URI templates are strings with embedded expressions enclosed in curly braces,
+ * such as:
+ * {@code http://example.com/{username}/profile{?tab,section}}
+ * <p>
+ * The class parses templates into parts (literal strings and template
+ * expressions),
+ * creates regex patterns for matching, and extracts variable values from
+ * matching URIs.
  */
 public class UriTemplate {
 
     // Constants for security and performance limits
     private static final int MAX_TEMPLATE_LENGTH = 1_000_000;
-
     private static final int MAX_VARIABLE_LENGTH = 1_000_000;
-
     private static final int MAX_TEMPLATE_EXPRESSIONS = 10_000;
-
     private static final int MAX_REGEX_LENGTH = 1_000_000;
 
     // The original template string and parsed components
@@ -41,16 +42,16 @@ public class UriTemplate {
     private final Pattern pattern;
 
     /**
-     * Constructor to create a new UriTemplate instance. Validates the template length,
-     * parses it into parts, and compiles a regex pattern.
+     * Constructor to create a new UriTemplate instance.
      *
      * @param template The URI template string
-     * @throws IllegalArgumentException if the template is invalid or too long
+     * @throws IllegalArgumentException if the template is invalid, too long, or
+     *                                  contains too many expressions
      */
     public UriTemplate(String template) {
         validateLength(template, MAX_TEMPLATE_LENGTH, "Template");
         this.template = template;
-        this.parts = parseTemplate(template);
+        this.parts = Collections.unmodifiableList(parseTemplate(template));
         this.pattern = Pattern.compile(createMatchingPattern());
     }
 
@@ -58,29 +59,44 @@ public class UriTemplate {
      * Matches a URI against this template and extracts variable values.
      *
      * @param uri The URI to match
-     * @return Map of variable names to extracted values, or null if the URI doesn't match
+     * @return Map of variable names to extracted values, or null if the URI doesn't
+     *         match
+     * @throws IllegalArgumentException if the URI is too long
      */
     public Map<String, Object> match(String uri) {
         validateLength(uri, MAX_TEMPLATE_LENGTH, "URI");
         Matcher matcher = pattern.matcher(uri);
-        if (!matcher.matches())
-            return null;
 
-        // Extract variable names from parts and capture their values
-        List<NameInfo> names = extractNamesFromParts();
+        if (!matcher.matches()) {
+            return null;
+        }
+
+        return extractVariablesFromMatcher(matcher);
+    }
+
+    /**
+     * Extracts variable values from a successful regex match.
+     *
+     * @param matcher The successful regex matcher
+     * @return Map of variable names to their extracted values
+     */
+    private Map<String, Object> extractVariablesFromMatcher(Matcher matcher) {
+        List<NameInfo> nameInfos = extractNamesFromParts();
         Map<String, Object> result = new HashMap<>();
-        for (int i = 0; i < names.size(); i++) {
-            NameInfo nameInfo = names.get(i);
+
+        for (int i = 0; i < nameInfos.size(); i++) {
+            NameInfo nameInfo = nameInfos.get(i);
             String value = matcher.group(i + 1);
             String cleanName = nameInfo.name().replace("*", "");
 
-            // Handle exploded values (comma-separated lists)
             if (nameInfo.exploded() && value.contains(",")) {
+                // Handle exploded values (comma-separated lists)
                 result.put(cleanName, List.of(value.split(",")));
             } else {
                 result.put(cleanName, value);
             }
         }
+
         return result;
     }
 
@@ -100,32 +116,42 @@ public class UriTemplate {
     }
 
     /**
-     * Parses a URI template into parts consisting of literal strings and template parts.
+     * Parses a URI template into parts consisting of literal strings and template
+     * parts.
      *
      * @param template The URI template to parse
-     * @return List of parts (Strings for literals, TemplatePart objects for expressions)
+     * @return List of parts (LiteralPart for literals, TemplatePart for
+     *         expressions)
+     * @throws IllegalArgumentException if the template syntax is invalid or
+     *                                  contains too many expressions
      */
     private List<Part> parseTemplate(String template) {
         List<Part> parsedParts = new ArrayList<>();
         StringBuilder literal = new StringBuilder();
         int expressionCount = 0;
 
-        // Iteratively parse template into parts
         for (int i = 0; i < template.length(); i++) {
             if (template.charAt(i) == '{') {
+                // Add accumulated literal part if any
                 if (!literal.isEmpty()) {
-                    parsedParts.add(new Part(literal.toString()));
+                    parsedParts.add(new LiteralPart(literal.toString()));
                     literal.setLength(0);
                 }
-                int end = template.indexOf("}", i);
-                if (end == -1)
-                    throw new IllegalArgumentException("Unclosed template expression");
 
-                expressionCount++;
-                if (expressionCount > MAX_TEMPLATE_EXPRESSIONS) {
-                    throw new IllegalArgumentException("Too many template expressions");
+                // Find closing brace
+                int end = template.indexOf("}", i);
+                if (end == -1) {
+                    throw new IllegalArgumentException("Unclosed template expression");
                 }
 
+                // Check expression count limits
+                expressionCount++;
+                if (expressionCount > MAX_TEMPLATE_EXPRESSIONS) {
+                    throw new IllegalArgumentException("Too many template expressions (max: "
+                            + MAX_TEMPLATE_EXPRESSIONS + ")");
+                }
+
+                // Parse and add the template expression
                 String expr = template.substring(i + 1, end);
                 parsedParts.add(parseTemplatePart(expr));
                 i = end;
@@ -133,8 +159,11 @@ public class UriTemplate {
                 literal.append(template.charAt(i));
             }
         }
-        if (!literal.isEmpty())
-            parsedParts.add(new Part(literal.toString()));
+
+        // Add final literal part if any
+        if (!literal.isEmpty()) {
+            parsedParts.add(new LiteralPart(literal.toString()));
+        }
 
         return parsedParts;
     }
@@ -142,16 +171,20 @@ public class UriTemplate {
     /**
      * Parses a single template expression into a TemplatePart object.
      *
-     * @param expr The template expression string
+     * @param expr The template expression string without surrounding braces
      * @return A TemplatePart object representing the expression
+     * @throws IllegalArgumentException if variable names are too long
      */
     private TemplatePart parseTemplatePart(String expr) {
         String operator = extractOperator(expr);
-        boolean exploded = expr.contains("*");
-        List<String> names = extractNames(expr);
+        String trimmedExpr = operator.isEmpty() ? expr : expr.substring(1);
+        boolean exploded = trimmedExpr.contains("*");
+        List<String> names = extractNames(trimmedExpr);
 
-        for (String name : names)
+        // Validate variable names
+        for (String name : names) {
             validateLength(name, MAX_VARIABLE_LENGTH, "Variable name");
+        }
 
         return new TemplatePart(names.getFirst(), operator, names, exploded);
     }
@@ -163,6 +196,10 @@ public class UriTemplate {
      * @return The operator as a string, or an empty string if none
      */
     private String extractOperator(String expr) {
+        if (expr.isEmpty()) {
+            return "";
+        }
+
         return switch (expr.charAt(0)) {
             case '+', '#', '.', '/', '?', '&' -> String.valueOf(expr.charAt(0));
             default -> "";
@@ -172,17 +209,20 @@ public class UriTemplate {
     /**
      * Extracts variable names from a template expression.
      *
-     * @param expr The template expression string
+     * @param expr The template expression string (with operator removed if present)
      * @return A list of variable names
      */
     private List<String> extractNames(String expr) {
-        String[] nameParts = expr.replaceAll("^[+.#/?&]", "").split(",");
+        String[] nameParts = expr.split(",");
         List<String> names = new ArrayList<>();
+
         for (String name : nameParts) {
             String trimmed = name.replace("*", "").trim();
-            if (!trimmed.isEmpty())
+            if (!trimmed.isEmpty()) {
                 names.add(trimmed);
+            }
         }
+
         return names;
     }
 
@@ -190,18 +230,22 @@ public class UriTemplate {
      * Constructs a regex pattern string to match URIs based on the template parts.
      *
      * @return A regex pattern string
+     * @throws IllegalArgumentException if the generated pattern is too long
      */
     private String createMatchingPattern() {
         StringBuilder patternBuilder = new StringBuilder("^");
+
         for (Part part : parts) {
             if (part instanceof TemplatePart templatePart) {
                 patternBuilder.append(createPatternForPart(templatePart));
-            } else {
-                patternBuilder.append(Pattern.quote(part.getName()));
+            } else if (part instanceof LiteralPart literalPart) {
+                patternBuilder.append(Pattern.quote(literalPart.getValue()));
             }
         }
+
         patternBuilder.append("$");
         String patternStr = patternBuilder.toString();
+
         validateLength(patternStr, MAX_REGEX_LENGTH, "Generated regex pattern");
         return patternStr;
     }
@@ -226,45 +270,154 @@ public class UriTemplate {
     /**
      * Extracts variable names from template parts.
      *
-     * @return A list of NameInfo objects containing variable names and their properties
+     * @return A list of NameInfo objects containing variable names and their
+     *         properties
      */
     private List<NameInfo> extractNamesFromParts() {
         List<NameInfo> names = new ArrayList<>();
-        for (Object part : parts) {
+
+        for (Part part : parts) {
             if (part instanceof TemplatePart templatePart) {
-                templatePart.getNames().forEach(name -> names.add(new NameInfo(name, templatePart.isExploded())));
+                for (String name : templatePart.getNames()) {
+                    names.add(new NameInfo(name, templatePart.isExploded()));
+                }
             }
         }
+
         return names;
     }
 
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class Part {
-        private String name;
+    /**
+     * Base class for all parts of a URI template.
+     */
+    public static abstract class Part {
+        /**
+         * Gets the string representation of this part for debugging.
+         *
+         * @return String representation
+         */
+        public abstract String getStringRepresentation();
     }
 
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    // Record classes for data encapsulation
-    public static class TemplatePart extends Part {
-        private String operator;
-        private List<String> names;
-        private boolean exploded;
+    /**
+     * Represents a literal text part in a URI template.
+     */
+    public static final class LiteralPart extends Part {
+        private final String value;
 
-        public TemplatePart(String name, String operator, List<String> names, boolean exploded) {
-            super(name);
-            this.operator = operator;
-            this.names = names;
-            this.exploded = exploded;
+        /**
+         * Creates a new literal part with the specified text.
+         *
+         * @param value The literal text
+         */
+        public LiteralPart(String value) {
+            this.value = Objects.requireNonNull(value);
+        }
+
+        /**
+         * Gets the literal text value.
+         *
+         * @return The literal text
+         */
+        public String getValue() {
+            return value;
+        }
+
+        @Override
+        public String getStringRepresentation() {
+            return value;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
+            LiteralPart that = (LiteralPart) o;
+            return value.equals(that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(value);
         }
     }
 
-    private record NameInfo(String name, boolean exploded) {
+    /**
+     * Represents a template expression part in a URI template.
+     */
+    public static final class TemplatePart extends Part {
+        @Getter
+        private final String name;
+
+        @Getter
+        private final String operator;
+
+        @Getter
+        private final List<String> names;
+
+        @Getter
+        private final boolean exploded;
+
+        /**
+         * Creates a new template part.
+         *
+         * @param name     The primary variable name
+         * @param operator The operator character (if any)
+         * @param names    All variable names in this part
+         * @param exploded Whether the variables are exploded (with asterisk)
+         */
+        public TemplatePart(String name, String operator, List<String> names, boolean exploded) {
+            this.name = Objects.requireNonNull(name);
+            this.operator = Objects.requireNonNull(operator);
+            this.names = Collections.unmodifiableList(new ArrayList<>(names));
+            this.exploded = exploded;
+        }
+
+        @Override
+        public String getStringRepresentation() {
+            StringBuilder sb = new StringBuilder("{");
+            if (!operator.isEmpty()) {
+                sb.append(operator);
+            }
+
+            for (int i = 0; i < names.size(); i++) {
+                if (i > 0) {
+                    sb.append(',');
+                }
+                sb.append(names.get(i));
+                if (exploded) {
+                    sb.append('*');
+                }
+            }
+
+            sb.append('}');
+            return sb.toString();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+            if (o == null || getClass() != o.getClass())
+                return false;
+            TemplatePart that = (TemplatePart) o;
+            return exploded == that.exploded &&
+                    name.equals(that.name) &&
+                    operator.equals(that.operator) &&
+                    names.equals(that.names);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, operator, names, exploded);
+        }
     }
 
+    /**
+     * Record class for storing variable name information during matching.
+     */
+    private record NameInfo(String name, boolean exploded) {
+    }
 }

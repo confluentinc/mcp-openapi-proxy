@@ -17,7 +17,7 @@ import java.util.Map;
  * @param <R> the type of registration
  */
 @Slf4j
-class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R extends Schemas.Registration> implements CacheUpdateHandler<K, R> {
+public class RegistrationServiceHandler<K extends Schemas.RegistrationKey, R extends Schemas.Registration> implements CacheUpdateHandler<K, R> {
 
     /**
      * Interface for handling registration updates.

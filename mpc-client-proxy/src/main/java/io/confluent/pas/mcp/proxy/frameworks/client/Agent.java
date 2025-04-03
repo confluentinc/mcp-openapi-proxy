@@ -29,7 +29,6 @@ import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 
@@ -55,7 +54,6 @@ public class Agent {
      * @param kafkaConfiguration Configuration for Kafka connectivity.
      * @param agentConfiguration Configuration containing agent settings and mcpTool configurations.
      */
-    @Autowired
     public Agent(KafkaConfiguration kafkaConfiguration, AgentConfiguration agentConfiguration) {
         this.kafkaConfiguration = kafkaConfiguration;
         this.agentConfiguration = agentConfiguration;

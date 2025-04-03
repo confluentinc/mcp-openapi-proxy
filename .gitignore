@@ -157,3 +157,4 @@ pyproject.toml
 uv.lock
 logs/
 .pid
+.vscode
