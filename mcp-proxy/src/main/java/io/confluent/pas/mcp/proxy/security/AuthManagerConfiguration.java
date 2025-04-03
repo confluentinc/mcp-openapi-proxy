@@ -59,7 +59,8 @@ public class AuthManagerConfiguration {
                     .build();
         }
 
-        final ServerHttpSecurity security = http.authorizeExchange((exchanges) -> exchanges.anyExchange().authenticated())
+        final ServerHttpSecurity security = http
+                .authorizeExchange((exchanges) -> exchanges.anyExchange().authenticated())
                 .csrf(ServerHttpSecurity.CsrfSpec::disable);
 
         // If basic authentication is enabled, set up the authentication manager

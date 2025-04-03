@@ -24,33 +24,42 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class Consumer<K, V> implements Closeable {
 
+    @FunctionalInterface
+    public interface TimeoutChecker {
+        void checkTimeouts(long lastCheck);
+    }
+
     private final ExecutorService executorSvc = Executors.newSingleThreadExecutor();
     private final KafkaConsumer<K, V> kafkaConsumer;
 
     private final ConsumerHandler<K, V> consumerHandler;
     private final List<String> topics = Collections.synchronizedList(new ArrayList<>());
+    private final TimeoutChecker timeoutChecker;
     private volatile boolean subscriptionUpdated = false;
     private volatile boolean stopRequested = false;
 
     /**
-     * Constructs a Consumer instance with the specified Kafka configuration and message types.
+     * Constructs a Consumer instance with the specified Kafka configuration and
+     * message types.
      *
-     * @param kafkaConfiguration Kafka configuration containing connection and auth details
+     * @param kafkaConfiguration Kafka configuration containing connection and auth
+     *                           details
      * @param keyClass           Class type for message keys
      * @param requestClass       Class type for message values
+     * @param timeoutChecker     The timeout checker to use
      */
     public Consumer(KafkaConfiguration kafkaConfiguration,
-                    Class<K> keyClass,
-                    Class<V> requestClass,
-                    ConsumerHandler<K, V> consumerHandler) {
+            Class<K> keyClass,
+            Class<V> requestClass,
+            ConsumerHandler<K, V> consumerHandler,
+            TimeoutChecker timeoutChecker) {
         this(consumerHandler,
                 new KafkaConsumer<>(KafkaPropertiesFactory.getConsumerProperties(
                         kafkaConfiguration,
                         false,
                         keyClass,
-                        requestClass)
-                )
-        );
+                        requestClass)),
+                timeoutChecker);
     }
 
     /**
@@ -58,11 +67,14 @@ public class Consumer<K, V> implements Closeable {
      *
      * @param consumerHandler The handler to process messages
      * @param kafkaConsumer   The Kafka consumer to use
+     * @param timeoutChecker  The timeout checker to use
      */
     public Consumer(ConsumerHandler<K, V> consumerHandler,
-                    KafkaConsumer<K, V> kafkaConsumer) {
+            KafkaConsumer<K, V> kafkaConsumer,
+            TimeoutChecker timeoutChecker) {
         this.kafkaConsumer = kafkaConsumer;
         this.consumerHandler = consumerHandler;
+        this.timeoutChecker = timeoutChecker;
 
         executorSvc.submit(this::runLoop);
     }
@@ -134,6 +146,8 @@ public class Consumer<K, V> implements Closeable {
     void runLoop() {
         log.info("Starting Consumer Service");
 
+        long lastCheck = System.currentTimeMillis();
+
         while (!stopRequested) {
             updateSubscriptions();
             if (topics.isEmpty()) {
@@ -149,7 +163,20 @@ public class Consumer<K, V> implements Closeable {
 
             try {
                 var records = kafkaConsumer.poll(Duration.ofMillis(100));
+
+                // Process the records before checking for timeouts
                 records.forEach(this::processRecord);
+
+                try {
+                    // Check for timeouts in the registered handlers
+                    timeoutChecker.checkTimeouts(lastCheck);
+
+                    // Update the last check time
+                    lastCheck = System.currentTimeMillis();
+                } catch (Exception e) {
+                    log.error("Error checking timeouts", e);
+                }
+
             } catch (WakeupException e) {
                 if (!stopRequested) {
                     log.error("Unexpected WakeupException", e);

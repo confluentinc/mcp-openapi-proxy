@@ -7,6 +7,7 @@ import io.confluent.pas.mcp.proxy.registration.kafka.ConsumerService;
 import io.confluent.pas.mcp.proxy.registration.kafka.ProducerService;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchema;
 import io.confluent.pas.mcp.proxy.registration.schemas.RegistrationSchemas;
+import io.micrometer.observation.ObservationRegistry;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,9 @@ class RequestResponseHandlerTest {
     @Mock
     private KafkaConfiguration kafkaConfiguration;
 
+    @Mock
+    private ObservationRegistry observationRegistry;
+
     private RequestResponseHandler requestResponseHandler;
 
     @BeforeEach
@@ -47,7 +51,7 @@ class RequestResponseHandlerTest {
         when(kafkaConfiguration.topicConfiguration()).thenReturn(new KafkaConfiguration.DefaultTopicConfiguration());
         when(kafkaConfiguration.saslMechanism()).thenReturn(KafkaConfiguration.DEFAULT_SASL_MECHANISM);
 
-        requestResponseHandler = new RequestResponseHandler(producerService, consumerService);
+        requestResponseHandler = new RequestResponseHandler(producerService, consumerService, observationRegistry);
     }
 
     @Test
